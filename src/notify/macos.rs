@@ -17,12 +17,18 @@ pub fn show(notification: &Notification) -> Result<()> {
         .join("MacOS")
         .join("ahoy-notify");
 
-    let output = Command::new(&ahoy_notify)
-        .arg(&notification.title)
+    let mut cmd = Command::new(&ahoy_notify);
+    cmd.arg(&notification.title)
         .arg(&notification.body)
         .arg("--sound")
-        .arg("Glass")
-        .output()?;
+        .arg("Glass");
+
+    // Pass activate bundle ID if provided
+    if let Some(ref bundle_id) = notification.activate {
+        cmd.arg("--activate").arg(bundle_id);
+    }
+
+    let output = cmd.output()?;
 
     if output.status.success() {
         info!("Notification shown successfully");

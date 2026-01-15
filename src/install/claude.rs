@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use serde_json::{json, Map, Value};
+use serde_json::{json, Value};
 use std::fs;
 use std::path::PathBuf;
 
@@ -17,20 +17,51 @@ fn ahoy_bin_path() -> String {
     config::bin_dir().join("ahoy").to_string_lossy().to_string()
 }
 
-fn create_ahoy_hook() -> Value {
+fn create_stop_hook() -> Value {
     json!({
         "matcher": "",
         "hooks": [
             {
                 "type": "command",
                 "command": format!(
-                    "{} send \"Task finished in $(basename $PWD)\" -t 'Claude Code'",
+                    "{} send --from-claude -t 'Claude Code' --activate \"$__CFBundleIdentifier\"",
                     ahoy_bin_path()
                 ),
                 "timeout": 5000
             }
         ]
     })
+}
+
+fn create_notification_hooks() -> Vec<Value> {
+    vec![
+        json!({
+            "matcher": "idle_prompt",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": format!(
+                        "{} send -t 'Claude Code' 'Waiting for your input' --activate \"$__CFBundleIdentifier\"",
+                        ahoy_bin_path()
+                    ),
+                    "timeout": 5000
+                }
+            ]
+        }),
+        json!({
+            "matcher": "permission_prompt",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": format!(
+                        "{} send --from-claude -t 'Claude Code' --activate \"$__CFBundleIdentifier\"",
+                        ahoy_bin_path()
+                    ),
+                    "timeout": 5000
+                }
+            ]
+        }),
+    ]
 }
 
 pub async fn install() -> Result<()> {
@@ -88,18 +119,33 @@ pub async fn install() -> Result<()> {
         return Ok(());
     }
 
-    // Add ahoy hook
-    stop_hooks.push(create_ahoy_hook());
+    // Add Stop hook
+    stop_hooks.push(create_stop_hook());
+
+    // Get or create Notification hooks array
+    if !hooks.contains_key("Notification") {
+        hooks.insert("Notification".to_string(), json!([]));
+    }
+    let notification_hooks = hooks.get_mut("Notification")
+        .and_then(|s| s.as_array_mut())
+        .context("Notification is not a JSON array")?;
+
+    // Add Notification hooks (idle_prompt and permission_prompt)
+    for hook in create_notification_hooks() {
+        notification_hooks.push(hook);
+    }
 
     // Write back settings
     let content = serde_json::to_string_pretty(&settings)?;
     fs::write(&settings_file, &content)
         .context("Failed to write Claude settings.json")?;
 
-    println!("Installed ahoy hook for Claude Code");
-    println!("Settings file: {}", settings_file.display());
+    println!("Installed ahoy hooks for Claude Code:");
+    println!("  - Stop: notifies when Claude finishes");
+    println!("  - Notification (idle_prompt): notifies when waiting for input");
+    println!("  - Notification (permission_prompt): notifies when permission needed");
     println!();
-    println!("Claude Code will now notify you when tasks finish!");
+    println!("Settings file: {}", settings_file.display());
 
     Ok(())
 }
@@ -117,43 +163,55 @@ pub async fn uninstall() -> Result<()> {
     let mut settings: Value = serde_json::from_str(&content)
         .context("Failed to parse Claude settings.json")?;
 
-    // Navigate to Stop hooks
-    let removed = if let Some(hooks) = settings.get_mut("hooks")
-        .and_then(|h| h.as_object_mut())
-    {
-        if let Some(stop_hooks) = hooks.get_mut("Stop")
-            .and_then(|s| s.as_array_mut())
-        {
-            let original_len = stop_hooks.len();
-            stop_hooks.retain(|hook| {
-                !hook.get("hooks")
-                    .and_then(|h| h.as_array())
-                    .map(|arr| arr.iter().any(|h| {
-                        h.get("command")
-                            .and_then(|c| c.as_str())
-                            .map(|cmd| cmd.contains(HOOK_MARKER))
-                            .unwrap_or(false)
-                    }))
-                    .unwrap_or(false)
-            });
-            stop_hooks.len() < original_len
-        } else {
-            false
-        }
-    } else {
-        false
-    };
+    let mut removed_stop = false;
+    let mut removed_notification = false;
 
-    if removed {
+    if let Some(hooks) = settings.get_mut("hooks").and_then(|h| h.as_object_mut()) {
+        // Remove Stop hooks
+        if let Some(stop_hooks) = hooks.get_mut("Stop").and_then(|s| s.as_array_mut()) {
+            let original_len = stop_hooks.len();
+            stop_hooks.retain(|hook| !contains_ahoy_marker(hook));
+            removed_stop = stop_hooks.len() < original_len;
+        }
+
+        // Remove Notification hooks
+        if let Some(notification_hooks) = hooks.get_mut("Notification").and_then(|s| s.as_array_mut()) {
+            let original_len = notification_hooks.len();
+            notification_hooks.retain(|hook| !contains_ahoy_marker(hook));
+            removed_notification = notification_hooks.len() < original_len;
+        }
+    }
+
+    if removed_stop || removed_notification {
         let content = serde_json::to_string_pretty(&settings)?;
         fs::write(&settings_file, &content)
             .context("Failed to write Claude settings.json")?;
-        println!("Removed ahoy hook from Claude Code");
+        println!("Removed ahoy hooks from Claude Code:");
+        if removed_stop {
+            println!("  - Stop hook");
+        }
+        if removed_notification {
+            println!("  - Notification hooks");
+        }
     } else {
-        println!("Ahoy hook was not installed for Claude Code");
+        println!("Ahoy hooks were not installed for Claude Code");
     }
 
     Ok(())
+}
+
+fn contains_ahoy_marker(hook: &Value) -> bool {
+    hook.get("hooks")
+        .and_then(|h| h.as_array())
+        .map(|arr| {
+            arr.iter().any(|h| {
+                h.get("command")
+                    .and_then(|c| c.as_str())
+                    .map(|cmd| cmd.contains(HOOK_MARKER))
+                    .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
 }
 
 pub fn is_installed() -> bool {

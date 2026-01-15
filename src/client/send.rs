@@ -2,12 +2,10 @@ use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read};
-use tokio::io::AsyncWriteExt;
-use tokio::net::UnixStream;
 use tracing::info;
 
 use crate::client::message::Notification;
-use crate::config;
+use crate::notify;
 
 /// Claude Code hook stdin data
 #[derive(Deserialize)]
@@ -16,6 +14,11 @@ struct ClaudeHookData {
     cwd: Option<String>,
     #[allow(dead_code)]
     session_id: Option<String>,
+    // For Notification hooks (permission_prompt)
+    tool_name: Option<String>,
+    tool_input: Option<serde_json::Value>,
+    #[allow(dead_code)]
+    hook_event_name: Option<String>,
 }
 
 /// A line from the Claude transcript
@@ -31,13 +34,14 @@ struct TranscriptMessage {
     content: Option<serde_json::Value>,
 }
 
-pub async fn run(
+pub fn run(
     message: Option<String>,
     title: String,
     json: Option<String>,
     from_claude: bool,
+    activate: Option<String>,
 ) -> Result<()> {
-    let notification = if from_claude {
+    let mut notification = if from_claude {
         build_from_claude_stdin(&title)?
     } else if let Some(json_str) = json {
         serde_json::from_str(&json_str)?
@@ -47,7 +51,12 @@ pub async fn run(
         bail!("Either a message or --json must be provided");
     };
 
-    send_notification(&notification).await
+    // Apply activate if provided (overrides any value from JSON/stdin)
+    if let Some(bundle_id) = activate {
+        notification.activate = Some(bundle_id);
+    }
+
+    send_notification(&notification)
 }
 
 fn build_from_claude_stdin(title: &str) -> Result<Notification> {
@@ -73,7 +82,38 @@ fn build_from_claude_stdin(title: &str) -> Result<Notification> {
         .and_then(|cwd| cwd.split('/').last())
         .unwrap_or("project");
 
-    // Try to get the last prompt from transcript
+    // Check if this is a Notification hook with tool info (permission_prompt)
+    if let Some(tool_name) = &hook_data.tool_name {
+        // Extract a brief description of the tool input
+        let tool_desc = if let Some(input) = &hook_data.tool_input {
+            // Try to get command for Bash, or file_path for Read/Write/Edit
+            input.get("command")
+                .or_else(|| input.get("file_path"))
+                .or_else(|| input.get("pattern"))
+                .and_then(|v| v.as_str())
+                .map(|s| {
+                    // Truncate long commands
+                    if s.len() > 60 {
+                        format!("{}...", &s[..57])
+                    } else {
+                        s.to_string()
+                    }
+                })
+                .unwrap_or_default()
+        } else {
+            String::new()
+        };
+
+        let body = if tool_desc.is_empty() {
+            format!("[{}] Needs permission: {}", project_name, tool_name)
+        } else {
+            format!("[{}] {}: {}", project_name, tool_name, tool_desc)
+        };
+
+        return Ok(Notification::new(title.to_string(), body));
+    }
+
+    // For Stop hooks: Try to get the last prompt from transcript
     let last_prompt = if let Some(transcript_path) = &hook_data.transcript_path {
         extract_last_prompt(transcript_path).unwrap_or_else(|_| "Task finished".to_string())
     } else {
@@ -143,23 +183,7 @@ fn extract_last_prompt(transcript_path: &str) -> Result<String> {
     last_user_content.ok_or_else(|| anyhow::anyhow!("No user message found in transcript"))
 }
 
-pub async fn send_notification(notification: &Notification) -> Result<()> {
-    let socket_path = config::socket_path();
-
-    let mut stream = UnixStream::connect(&socket_path).await.map_err(|e| {
-        anyhow::anyhow!(
-            "Failed to connect to daemon at {:?}: {}. Is the daemon running?",
-            socket_path,
-            e
-        )
-    })?;
-
-    let mut json = serde_json::to_string(notification)?;
-    json.push('\n');
-
-    stream.write_all(json.as_bytes()).await?;
-    stream.flush().await?;
-
-    info!("Notification sent: {:?}", notification);
-    Ok(())
+fn send_notification(notification: &Notification) -> Result<()> {
+    info!("Showing notification: {:?}", notification);
+    notify::show(notification)
 }

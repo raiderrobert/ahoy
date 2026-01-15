@@ -14,6 +14,10 @@ pub struct Notification {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
 
+    /// Bundle ID to activate when notification is clicked
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub activate: Option<String>,
+
     /// Optional metadata for extensibility
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub metadata: HashMap<String, serde_json::Value>,
@@ -25,12 +29,20 @@ impl Notification {
             title: title.into(),
             body: body.into(),
             icon: None,
+            activate: None,
             metadata: HashMap::new(),
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_icon(mut self, icon: impl Into<String>) -> Self {
         self.icon = Some(icon.into());
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn with_activate(mut self, bundle_id: impl Into<String>) -> Self {
+        self.activate = Some(bundle_id.into());
         self
     }
 }
