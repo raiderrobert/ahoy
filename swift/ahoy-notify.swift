@@ -2,6 +2,7 @@
 
 import Foundation
 import AppKit
+import CoreGraphics
 import ObjectiveC
 
 // MARK: - Bundle Identifier Swizzling (like terminal-notifier)
@@ -43,6 +44,38 @@ installFakeBundleIdentifierHook()
 // Verify swizzling works
 fputs("Bundle.main.bundleIdentifier = \(Bundle.main.bundleIdentifier ?? "nil")\n", stderr)
 
+// MARK: - Notification Delegate for handling clicks
+class NotificationDelegate: NSObject, NSUserNotificationCenterDelegate {
+    var activateBundleId: String?
+    var didActivate = false
+
+    func userNotificationCenter(_ center: NSUserNotificationCenter, didActivate notification: NSUserNotification) {
+        didActivate = true
+        if let bundleId = activateBundleId {
+            // Find and activate the running app
+            let runningApps = NSWorkspace.shared.runningApplications.filter { $0.bundleIdentifier == bundleId }
+            if let app = runningApps.first {
+                // Activate existing instance - use activate() without deprecated options
+                app.activate()
+            } else {
+                // App not running - use open command which is more reliable
+                let task = Process()
+                task.launchPath = "/usr/bin/open"
+                task.arguments = ["-b", bundleId]
+                try? task.run()
+            }
+        }
+        // Exit after handling
+        exit(0)
+    }
+
+    func userNotificationCenter(_ center: NSUserNotificationCenter, shouldPresent notification: NSUserNotification) -> Bool {
+        return true // Always show, even if app is frontmost
+    }
+}
+
+let notificationDelegate = NotificationDelegate()
+
 // Initialize NSApplication so macOS recognizes us as a proper app
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
@@ -50,7 +83,7 @@ app.setActivationPolicy(.accessory)
 // Parse command line arguments
 let args = CommandLine.arguments
 guard args.count >= 3 else {
-    fputs("Usage: ahoy-notify <title> <body> [--sound <name>] [--icon <path>]\n", stderr)
+    fputs("Usage: ahoy-notify <title> <body> [--sound <name>] [--activate <bundle-id>]\n", stderr)
     exit(1)
 }
 
@@ -59,6 +92,8 @@ let body = args[2]
 
 var soundName = "Glass"
 var iconPath: String? = nil
+var activateBundleId: String? = nil
+var idleThreshold: Double = 30.0  // Suppress notification if user active within this many seconds
 
 // Default icon path - check Resources directory (for app bundle) then same directory as binary
 // Prefer 512px icon for Retina displays, fallback to 128px
@@ -87,9 +122,41 @@ while i < args.count {
     } else if args[i] == "--icon" && i + 1 < args.count {
         iconPath = args[i + 1]
         i += 2
+    } else if args[i] == "--activate" && i + 1 < args.count {
+        activateBundleId = args[i + 1]
+        i += 2
+    } else if args[i] == "--idle-threshold" && i + 1 < args.count {
+        idleThreshold = Double(args[i + 1]) ?? 30.0
+        i += 2
+    } else if args[i] == "--force" {
+        idleThreshold = 0  // Disable idle check
+        i += 1
     } else {
         i += 1
     }
+}
+
+// Set up the delegate with the activation bundle ID
+notificationDelegate.activateBundleId = activateBundleId
+NSUserNotificationCenter.default.delegate = notificationDelegate
+
+// MARK: - Idle Detection
+// Check if user is active (keyboard/mouse activity within threshold)
+// If active, skip notification to avoid distraction
+if idleThreshold > 0 {
+    // Get seconds since last keyboard or mouse event
+    let keyboardIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .keyDown)
+    let mouseIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .mouseMoved)
+    let clickIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .leftMouseDown)
+
+    // User is considered active if any input within threshold
+    let minIdle = min(keyboardIdle, mouseIdle, clickIdle)
+
+    if minIdle < idleThreshold {
+        fputs("User active (idle: \(String(format: "%.1f", minIdle))s < \(String(format: "%.0f", idleThreshold))s threshold), skipping notification\n", stderr)
+        exit(0)
+    }
+    fputs("User idle for \(String(format: "%.1f", minIdle))s, showing notification\n", stderr)
 }
 
 // Use deprecated but reliable NSUserNotification
@@ -105,5 +172,13 @@ notification.soundName = soundName
 // Deliver the notification
 NSUserNotificationCenter.default.deliver(notification)
 
-// Give it a moment to deliver
-RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
+// If we have an activation target, wait for user to click (up to 30 seconds)
+// Otherwise just give it a moment to deliver
+if activateBundleId != nil {
+    let timeout = Date(timeIntervalSinceNow: 30)
+    while !notificationDelegate.didActivate && Date() < timeout {
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+    }
+} else {
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
+}
