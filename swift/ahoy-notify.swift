@@ -141,22 +141,33 @@ notificationDelegate.activateBundleId = activateBundleId
 NSUserNotificationCenter.default.delegate = notificationDelegate
 
 // MARK: - Idle Detection
-// Check if user is active (keyboard/mouse activity within threshold)
-// If active, skip notification to avoid distraction
+// Only suppress notifications if the source app (terminal) is frontmost AND user is active.
+// If user switched to another app, always notify - they're not watching Claude anymore.
 if idleThreshold > 0 {
-    // Get seconds since last keyboard or mouse event
-    let keyboardIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .keyDown)
-    let mouseIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .mouseMoved)
-    let clickIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .leftMouseDown)
+    // Check if the source app (terminal) is the frontmost app
+    let frontmostApp = NSWorkspace.shared.frontmostApplication
+    let frontmostBundleId = frontmostApp?.bundleIdentifier
 
-    // User is considered active if any input within threshold
-    let minIdle = min(keyboardIdle, mouseIdle, clickIdle)
+    // Only apply idle suppression if the terminal is still in focus
+    let terminalIsFront = activateBundleId != nil && frontmostBundleId == activateBundleId
 
-    if minIdle < idleThreshold {
-        fputs("User active (idle: \(String(format: "%.1f", minIdle))s < \(String(format: "%.0f", idleThreshold))s threshold), skipping notification\n", stderr)
-        exit(0)
+    if terminalIsFront {
+        // Get seconds since last keyboard or mouse event
+        let keyboardIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .keyDown)
+        let mouseIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .mouseMoved)
+        let clickIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .leftMouseDown)
+
+        // User is considered active if any input within threshold
+        let minIdle = min(keyboardIdle, mouseIdle, clickIdle)
+
+        if minIdle < idleThreshold {
+            fputs("Terminal focused + user active (idle: \(String(format: "%.1f", minIdle))s < \(String(format: "%.0f", idleThreshold))s), skipping notification\n", stderr)
+            exit(0)
+        }
+        fputs("Terminal focused but user idle for \(String(format: "%.1f", minIdle))s, showing notification\n", stderr)
+    } else {
+        fputs("Terminal not focused (front: \(frontmostBundleId ?? "nil")), showing notification\n", stderr)
     }
-    fputs("User idle for \(String(format: "%.1f", minIdle))s, showing notification\n", stderr)
 }
 
 // Use deprecated but reliable NSUserNotification
