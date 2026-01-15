@@ -2,7 +2,6 @@
 
 import Foundation
 import AppKit
-import CoreGraphics
 import ObjectiveC
 
 // MARK: - Bundle Identifier Swizzling (like terminal-notifier)
@@ -93,7 +92,6 @@ let body = args[2]
 var soundName = "Glass"
 var iconPath: String? = nil
 var activateBundleId: String? = nil
-var idleThreshold: Double = 30.0  // Suppress notification if user active within this many seconds
 
 // Default icon path - check Resources directory (for app bundle) then same directory as binary
 // Prefer 512px icon for Retina displays, fallback to 128px
@@ -125,12 +123,6 @@ while i < args.count {
     } else if args[i] == "--activate" && i + 1 < args.count {
         activateBundleId = args[i + 1]
         i += 2
-    } else if args[i] == "--idle-threshold" && i + 1 < args.count {
-        idleThreshold = Double(args[i + 1]) ?? 30.0
-        i += 2
-    } else if args[i] == "--force" {
-        idleThreshold = 0  // Disable idle check
-        i += 1
     } else {
         i += 1
     }
@@ -140,34 +132,17 @@ while i < args.count {
 notificationDelegate.activateBundleId = activateBundleId
 NSUserNotificationCenter.default.delegate = notificationDelegate
 
-// MARK: - Idle Detection
-// Only suppress notifications if the source app (terminal) is frontmost AND user is active.
-// If user switched to another app, always notify - they're not watching Claude anymore.
-if idleThreshold > 0 {
-    // Check if the source app (terminal) is the frontmost app
+// MARK: - Focus Check
+// If the source terminal is focused, user is already watching - don't notify.
+if let bundleId = activateBundleId {
     let frontmostApp = NSWorkspace.shared.frontmostApplication
     let frontmostBundleId = frontmostApp?.bundleIdentifier
 
-    // Only apply idle suppression if the terminal is still in focus
-    let terminalIsFront = activateBundleId != nil && frontmostBundleId == activateBundleId
-
-    if terminalIsFront {
-        // Get seconds since last keyboard or mouse event
-        let keyboardIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .keyDown)
-        let mouseIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .mouseMoved)
-        let clickIdle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .leftMouseDown)
-
-        // User is considered active if any input within threshold
-        let minIdle = min(keyboardIdle, mouseIdle, clickIdle)
-
-        if minIdle < idleThreshold {
-            fputs("Terminal focused + user active (idle: \(String(format: "%.1f", minIdle))s < \(String(format: "%.0f", idleThreshold))s), skipping notification\n", stderr)
-            exit(0)
-        }
-        fputs("Terminal focused but user idle for \(String(format: "%.1f", minIdle))s, showing notification\n", stderr)
-    } else {
-        fputs("Terminal not focused (front: \(frontmostBundleId ?? "nil")), showing notification\n", stderr)
+    if frontmostBundleId == bundleId {
+        fputs("Terminal is focused (\(bundleId)), skipping notification\n", stderr)
+        exit(0)
     }
+    fputs("Terminal not focused (front: \(frontmostBundleId ?? "nil")), showing notification\n", stderr)
 }
 
 // Use deprecated but reliable NSUserNotification
@@ -182,13 +157,39 @@ notification.soundName = soundName
 
 // Deliver the notification
 NSUserNotificationCenter.default.deliver(notification)
+fputs("Notification delivered\n", stderr)
 
-// If we have an activation target, wait for user to click (up to 30 seconds)
-// Otherwise just give it a moment to deliver
+// If we have an activation target, wait for user to click with retry logic:
+// - Wait 30s for response
+// - If no response, retry once
+// - Wait another 30s
+// - Give up
 if activateBundleId != nil {
-    let timeout = Date(timeIntervalSinceNow: 30)
+    let retryDelay: TimeInterval = 30
+
+    // First wait
+    var timeout = Date(timeIntervalSinceNow: retryDelay)
     while !notificationDelegate.didActivate && Date() < timeout {
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+    }
+
+    // If user didn't respond, retry once
+    if !notificationDelegate.didActivate {
+        fputs("No response after 30s, retrying notification\n", stderr)
+
+        // Remove old notification and deliver again
+        NSUserNotificationCenter.default.removeDeliveredNotification(notification)
+        NSUserNotificationCenter.default.deliver(notification)
+
+        // Second wait
+        timeout = Date(timeIntervalSinceNow: retryDelay)
+        while !notificationDelegate.didActivate && Date() < timeout {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+        }
+
+        if !notificationDelegate.didActivate {
+            fputs("No response after retry, giving up\n", stderr)
+        }
     }
 } else {
     RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
