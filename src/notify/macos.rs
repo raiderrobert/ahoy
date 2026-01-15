@@ -5,19 +5,18 @@ use tracing::info;
 use crate::client::message::Notification;
 
 pub fn show(notification: &Notification) -> Result<()> {
-    info!("Attempting to show macOS notification via osascript...");
+    info!("Attempting to show macOS notification via terminal-notifier...");
 
-    // Use osascript to display notification - this is the most reliable approach
-    // and works in all contexts (daemon, CLI, etc.)
-    let script = format!(
-        r#"display notification "{}" with title "{}" sound name "Glass""#,
-        escape_applescript(&notification.body),
-        escape_applescript(&notification.title)
-    );
-
-    let output = Command::new("osascript")
-        .arg("-e")
-        .arg(&script)
+    // Use terminal-notifier - it's a signed app that shows proper banner notifications
+    // Must use full path since launchd doesn't have homebrew in PATH
+    let output = Command::new("/opt/homebrew/bin/terminal-notifier")
+        .arg("-title")
+        .arg(&notification.title)
+        .arg("-message")
+        .arg(&notification.body)
+        .arg("-sound")
+        .arg("Glass")
+        .arg("-ignoreDnD") // Show even in Do Not Disturb
         .output()?;
 
     if output.status.success() {
@@ -28,8 +27,4 @@ pub fn show(notification: &Notification) -> Result<()> {
         info!("Notification error: {}", stderr);
         anyhow::bail!("Failed to show notification: {}", stderr)
     }
-}
-
-fn escape_applescript(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('"', "\\\"")
 }
