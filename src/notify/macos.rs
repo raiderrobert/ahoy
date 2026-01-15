@@ -5,20 +5,23 @@ use tracing::info;
 use crate::client::message::Notification;
 
 pub fn show(notification: &Notification) -> Result<()> {
-    info!("Attempting to show macOS notification via terminal-notifier...");
+    info!("Attempting to show macOS notification via ahoy-notify...");
 
-    // Use terminal-notifier - it's a signed app that shows proper banner notifications
-    // Must use full path since launchd doesn't have homebrew in PATH
-    let output = Command::new("/opt/homebrew/bin/terminal-notifier")
-        .arg("-title")
+    // Use our Swift helper binary for native macOS notifications
+    // The helper is inside the Ahoy.app bundle for proper icon display
+    let ahoy_notify = dirs::home_dir()
+        .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?
+        .join(".ahoy")
+        .join("Ahoy.app")
+        .join("Contents")
+        .join("MacOS")
+        .join("ahoy-notify");
+
+    let output = Command::new(&ahoy_notify)
         .arg(&notification.title)
-        .arg("-message")
         .arg(&notification.body)
-        .arg("-sound")
+        .arg("--sound")
         .arg("Glass")
-        .arg("-sender")
-        .arg("rs.ahoy.daemon") // Use Ahoy's bundle ID
-        .arg("-ignoreDnD") // Show even in Do Not Disturb
         .output()?;
 
     if output.status.success() {
