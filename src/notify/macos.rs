@@ -16,6 +16,8 @@ pub fn show(notification: &Notification) -> Result<()> {
         .arg(&notification.body)
         .arg("-sound")
         .arg("Glass")
+        .arg("-sender")
+        .arg("rs.ahoy.daemon") // Use Ahoy's bundle ID
         .arg("-ignoreDnD") // Show even in Do Not Disturb
         .output()?;
 
