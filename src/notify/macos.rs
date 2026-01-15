@@ -8,14 +8,16 @@ pub fn show(notification: &Notification) -> Result<()> {
     info!("Attempting to show macOS notification via ahoy-notify...");
 
     // Use our Swift helper binary for native macOS notifications
-    // The helper is installed alongside the main binary
-    let ahoy_dir = dirs::home_dir()
+    // The helper is inside the Ahoy.app bundle for proper icon display
+    let ahoy_notify = dirs::home_dir()
         .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?
         .join(".ahoy")
-        .join("bin")
+        .join("Ahoy.app")
+        .join("Contents")
+        .join("MacOS")
         .join("ahoy-notify");
 
-    let output = Command::new(&ahoy_dir)
+    let output = Command::new(&ahoy_notify)
         .arg(&notification.title)
         .arg(&notification.body)
         .arg("--sound")
