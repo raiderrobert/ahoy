@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Desktop notifications for Claude Code via Ahoy",
   "author": {
-    "name": "Robert Roskam"
+    "name": "Robert Roskam",
+    "email": "raiderrobert@gmail.com"
   }
 }
