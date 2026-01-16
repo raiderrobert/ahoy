@@ -23,7 +23,6 @@ pub fn show(notification: &Notification) -> Result<()> {
         .arg("--sound")
         .arg("Glass");
 
-    // Pass activate bundle ID if provided
     if let Some(ref bundle_id) = notification.activate {
         cmd.arg("--activate").arg(bundle_id);
     }

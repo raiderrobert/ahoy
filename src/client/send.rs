@@ -14,7 +14,6 @@ struct ClaudeHookData {
     cwd: Option<String>,
     #[allow(dead_code)]
     session_id: Option<String>,
-    // For Notification hooks (permission_prompt)
     tool_name: Option<String>,
     tool_input: Option<serde_json::Value>,
     #[allow(dead_code)]
@@ -65,7 +64,6 @@ fn build_from_claude_stdin(title: &str) -> Result<Notification> {
 
 // Internal function for testing - accepts any reader
 fn build_from_claude_stdin_reader(mut reader: impl Read, title: &str) -> Result<Notification> {
-    // Read from reader
     let mut stdin_data = String::new();
     reader.read_to_string(&mut stdin_data)?;
 
@@ -76,20 +74,16 @@ fn build_from_claude_stdin_reader(mut reader: impl Read, title: &str) -> Result<
         ));
     }
 
-    // Parse the hook data
     let hook_data: ClaudeHookData = serde_json::from_str(&stdin_data)
         .context("Failed to parse Claude hook data from stdin")?;
 
-    // Get project name from cwd
     let project_name = hook_data
         .cwd
         .as_ref()
         .and_then(|cwd| cwd.split('/').last())
         .unwrap_or("project");
 
-    // Check if this is a Notification hook with tool info (permission_prompt)
     if let Some(tool_name) = &hook_data.tool_name {
-        // Extract a brief description of the tool input
         let tool_desc = if let Some(input) = &hook_data.tool_input {
             // Try to get command for Bash, or file_path for Read/Write/Edit
             input.get("command")
@@ -97,7 +91,6 @@ fn build_from_claude_stdin_reader(mut reader: impl Read, title: &str) -> Result<
                 .or_else(|| input.get("pattern"))
                 .and_then(|v| v.as_str())
                 .map(|s| {
-                    // Truncate long commands
                     if s.len() > 60 {
                         format!("{}...", &s[..57])
                     } else {
@@ -118,7 +111,6 @@ fn build_from_claude_stdin_reader(mut reader: impl Read, title: &str) -> Result<
         return Ok(Notification::new(title.to_string(), body));
     }
 
-    // For Stop hooks: Try to get the last prompt from transcript
     let last_prompt = if let Some(transcript_path) = &hook_data.transcript_path {
         extract_last_prompt(transcript_path).unwrap_or_else(|_| "Task finished".to_string())
     } else {
@@ -157,7 +149,6 @@ fn extract_last_prompt(transcript_path: &str) -> Result<String> {
                         let text = match content {
                             serde_json::Value::String(s) => s,
                             serde_json::Value::Array(arr) => {
-                                // Extract text from content blocks
                                 arr.iter()
                                     .filter_map(|item| {
                                         item.get("text").and_then(|t| t.as_str())
@@ -168,7 +159,6 @@ fn extract_last_prompt(transcript_path: &str) -> Result<String> {
                             _ => continue,
                         };
 
-                        // Clean up the text (remove newlines, trim)
                         let cleaned = text
                             .lines()
                             .next()

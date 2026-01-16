@@ -72,25 +72,21 @@ fn create_notification_hooks() -> Vec<Value> {
 pub fn install() -> Result<()> {
     let settings_file = settings_path();
 
-    // Read existing settings or create empty object
     let mut settings: Value = if settings_file.exists() {
         let content = fs::read_to_string(&settings_file)
             .context("Failed to read Claude settings.json")?;
         serde_json::from_str(&content)
             .context("Failed to parse Claude settings.json")?
     } else {
-        // Create parent directory if needed
         if let Some(parent) = settings_file.parent() {
             fs::create_dir_all(parent)?;
         }
         json!({})
     };
 
-    // Ensure settings is an object
     let settings_obj = settings.as_object_mut()
         .context("Claude settings.json is not a JSON object")?;
 
-    // Get or create hooks section
     if !settings_obj.contains_key("hooks") {
         settings_obj.insert("hooks".to_string(), json!({}));
     }
@@ -98,7 +94,6 @@ pub fn install() -> Result<()> {
         .and_then(|h| h.as_object_mut())
         .context("hooks is not a JSON object")?;
 
-    // Get or create Stop hooks array
     if !hooks.contains_key("Stop") {
         hooks.insert("Stop".to_string(), json!([]));
     }
@@ -106,7 +101,6 @@ pub fn install() -> Result<()> {
         .and_then(|s| s.as_array_mut())
         .context("Stop is not a JSON array")?;
 
-    // Check if ahoy hook already exists
     let already_installed = stop_hooks.iter().any(|hook| {
         hook.get("hooks")
             .and_then(|h| h.as_array())
@@ -124,10 +118,8 @@ pub fn install() -> Result<()> {
         return Ok(());
     }
 
-    // Add Stop hook
     stop_hooks.push(create_stop_hook());
 
-    // Get or create Notification hooks array
     if !hooks.contains_key("Notification") {
         hooks.insert("Notification".to_string(), json!([]));
     }
@@ -135,12 +127,10 @@ pub fn install() -> Result<()> {
         .and_then(|s| s.as_array_mut())
         .context("Notification is not a JSON array")?;
 
-    // Add Notification hooks (idle_prompt and permission_prompt)
     for hook in create_notification_hooks() {
         notification_hooks.push(hook);
     }
 
-    // Write back settings
     let content = serde_json::to_string_pretty(&settings)?;
     fs::write(&settings_file, &content)
         .context("Failed to write Claude settings.json")?;

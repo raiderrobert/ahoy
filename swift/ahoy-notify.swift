@@ -37,10 +37,8 @@ func installFakeBundleIdentifierHook() {
     fputs("Bundle swizzling installed for: \(fakeBundleIdentifier)\n", stderr)
 }
 
-// Install the hook before anything else
 installFakeBundleIdentifierHook()
 
-// Verify swizzling works
 fputs("Bundle.main.bundleIdentifier = \(Bundle.main.bundleIdentifier ?? "nil")\n", stderr)
 
 // MARK: - Notification Delegate for handling clicks
@@ -51,7 +49,6 @@ class NotificationDelegate: NSObject, NSUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: NSUserNotificationCenter, didActivate notification: NSUserNotification) {
         didActivate = true
         if let bundleId = activateBundleId {
-            // Find and activate the running app
             let runningApps = NSWorkspace.shared.runningApplications.filter { $0.bundleIdentifier == bundleId }
             if let app = runningApps.first {
                 // Activate existing instance - use activate() without deprecated options
@@ -64,7 +61,6 @@ class NotificationDelegate: NSObject, NSUserNotificationCenterDelegate {
                 try? task.run()
             }
         }
-        // Exit after handling
         exit(0)
     }
 
@@ -79,7 +75,6 @@ let notificationDelegate = NotificationDelegate()
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 
-// Parse command line arguments
 let args = CommandLine.arguments
 guard args.count >= 3 else {
     fputs("Usage: ahoy-notify <title> <body> [--sound <name>] [--activate <bundle-id>]\n", stderr)
@@ -128,7 +123,6 @@ while i < args.count {
     }
 }
 
-// Set up the delegate with the activation bundle ID
 notificationDelegate.activateBundleId = activateBundleId
 NSUserNotificationCenter.default.delegate = notificationDelegate
 
@@ -145,8 +139,6 @@ if let bundleId = activateBundleId {
     fputs("Terminal not focused (front: \(frontmostBundleId ?? "nil")), showing notification\n", stderr)
 }
 
-// Use deprecated but reliable NSUserNotification
-// This doesn't require explicit authorization like UNUserNotificationCenter
 let notification = NSUserNotification()
 notification.title = title
 notification.informativeText = body
@@ -155,19 +147,16 @@ notification.soundName = soundName
 // The left side now shows the app icon via bundle swizzling
 // No need to set contentImage (right side) anymore
 
-// Deliver the notification
 NSUserNotificationCenter.default.deliver(notification)
 fputs("Notification delivered\n", stderr)
 
 // If we have an activation target, wait for user to click
 // Otherwise just keep the process alive briefly so notification can be delivered
 if activateBundleId != nil {
-    // Wait up to 60 seconds for user to click the notification
     let timeout = Date(timeIntervalSinceNow: 60)
     while !notificationDelegate.didActivate && Date() < timeout {
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
     }
 } else {
-    // No activation target, just wait briefly for notification to be delivered
     RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
 }
