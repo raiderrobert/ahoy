@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Build Rust binary
+        run: cargo build --release
+
+      - name: Build Swift helper
+        run: swiftc -O -o Ahoy.app/Contents/MacOS/ahoy-notify swift/ahoy-notify.swift
+
+      - name: Code sign binaries
+        run: |
+          codesign -s - target/release/ahoy
+          codesign -s - Ahoy.app/Contents/MacOS/ahoy-notify
+
+      - name: Create release archive
+        run: |
+          mkdir -p release/ahoy
+          cp target/release/ahoy release/ahoy/
+          cp -R Ahoy.app release/ahoy/
+          cp install.sh release/ahoy/
+          cp uninstall.sh release/ahoy/
+          cp README.md release/ahoy/
+          cd release && tar -czvf ahoy-macos-arm64.tar.gz ahoy
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ahoy-macos-arm64
+          path: release/ahoy-macos-arm64.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ahoy-macos-arm64
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ahoy-macos-arm64.tar.gz
+          generate_release_notes: true
