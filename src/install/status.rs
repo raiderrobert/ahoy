@@ -9,7 +9,11 @@ pub fn run() -> Result<()> {
     // Claude Code
     let claude_installed = claude::is_installed();
     let claude_marker = if claude_installed { "x" } else { " " };
-    let claude_status = if claude_installed { "installed" } else { "not installed" };
+    let claude_status = if claude_installed {
+        "installed"
+    } else {
+        "not installed"
+    };
     println!("  [{}] Claude Code ({})", claude_marker, claude_status);
 
     // Codex (placeholder)

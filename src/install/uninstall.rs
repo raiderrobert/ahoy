@@ -28,7 +28,10 @@ pub fn run(agent: Option<String>) -> Result<()> {
             Ok(())
         }
         other => {
-            anyhow::bail!("Unknown agent: {}. Supported: claude, codex, gemini, all", other);
+            anyhow::bail!(
+                "Unknown agent: {}. Supported: claude, codex, gemini, all",
+                other
+            );
         }
     }
 }

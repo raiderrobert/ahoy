@@ -20,7 +20,10 @@ pub fn run(agent: Option<String>) -> Result<()> {
             println!();
 
             // Claude Code
-            if dirs::home_dir().map(|h| h.join(".claude").exists()).unwrap_or(false) {
+            if dirs::home_dir()
+                .map(|h| h.join(".claude").exists())
+                .unwrap_or(false)
+            {
                 println!("[Claude Code]");
                 claude::install()?;
                 println!();
@@ -30,7 +33,10 @@ pub fn run(agent: Option<String>) -> Result<()> {
             Ok(())
         }
         other => {
-            anyhow::bail!("Unknown agent: {}. Supported: claude, codex, gemini, all", other);
+            anyhow::bail!(
+                "Unknown agent: {}. Supported: claude, codex, gemini, all",
+                other
+            );
         }
     }
 }

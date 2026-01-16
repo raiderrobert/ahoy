@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::fs;
 use std::path::PathBuf;
 
@@ -73,10 +73,9 @@ pub fn install() -> Result<()> {
     let settings_file = settings_path();
 
     let mut settings: Value = if settings_file.exists() {
-        let content = fs::read_to_string(&settings_file)
-            .context("Failed to read Claude settings.json")?;
-        serde_json::from_str(&content)
-            .context("Failed to parse Claude settings.json")?
+        let content =
+            fs::read_to_string(&settings_file).context("Failed to read Claude settings.json")?;
+        serde_json::from_str(&content).context("Failed to parse Claude settings.json")?
     } else {
         if let Some(parent) = settings_file.parent() {
             fs::create_dir_all(parent)?;
@@ -84,32 +83,37 @@ pub fn install() -> Result<()> {
         json!({})
     };
 
-    let settings_obj = settings.as_object_mut()
+    let settings_obj = settings
+        .as_object_mut()
         .context("Claude settings.json is not a JSON object")?;
 
     if !settings_obj.contains_key("hooks") {
         settings_obj.insert("hooks".to_string(), json!({}));
     }
-    let hooks = settings_obj.get_mut("hooks")
+    let hooks = settings_obj
+        .get_mut("hooks")
         .and_then(|h| h.as_object_mut())
         .context("hooks is not a JSON object")?;
 
     if !hooks.contains_key("Stop") {
         hooks.insert("Stop".to_string(), json!([]));
     }
-    let stop_hooks = hooks.get_mut("Stop")
+    let stop_hooks = hooks
+        .get_mut("Stop")
         .and_then(|s| s.as_array_mut())
         .context("Stop is not a JSON array")?;
 
     let already_installed = stop_hooks.iter().any(|hook| {
         hook.get("hooks")
             .and_then(|h| h.as_array())
-            .map(|arr| arr.iter().any(|h| {
-                h.get("command")
-                    .and_then(|c| c.as_str())
-                    .map(|cmd| cmd.contains(HOOK_MARKER))
-                    .unwrap_or(false)
-            }))
+            .map(|arr| {
+                arr.iter().any(|h| {
+                    h.get("command")
+                        .and_then(|c| c.as_str())
+                        .map(|cmd| cmd.contains(HOOK_MARKER))
+                        .unwrap_or(false)
+                })
+            })
             .unwrap_or(false)
     });
 
@@ -123,7 +127,8 @@ pub fn install() -> Result<()> {
     if !hooks.contains_key("Notification") {
         hooks.insert("Notification".to_string(), json!([]));
     }
-    let notification_hooks = hooks.get_mut("Notification")
+    let notification_hooks = hooks
+        .get_mut("Notification")
         .and_then(|s| s.as_array_mut())
         .context("Notification is not a JSON array")?;
 
@@ -132,8 +137,7 @@ pub fn install() -> Result<()> {
     }
 
     let content = serde_json::to_string_pretty(&settings)?;
-    fs::write(&settings_file, &content)
-        .context("Failed to write Claude settings.json")?;
+    fs::write(&settings_file, &content).context("Failed to write Claude settings.json")?;
 
     println!("Installed ahoy hooks for Claude Code:");
     println!("  - Stop: notifies when Claude finishes");
@@ -153,10 +157,10 @@ pub fn uninstall() -> Result<()> {
         return Ok(());
     }
 
-    let content = fs::read_to_string(&settings_file)
-        .context("Failed to read Claude settings.json")?;
-    let mut settings: Value = serde_json::from_str(&content)
-        .context("Failed to parse Claude settings.json")?;
+    let content =
+        fs::read_to_string(&settings_file).context("Failed to read Claude settings.json")?;
+    let mut settings: Value =
+        serde_json::from_str(&content).context("Failed to parse Claude settings.json")?;
 
     let mut removed_stop = false;
     let mut removed_notification = false;
@@ -170,7 +174,9 @@ pub fn uninstall() -> Result<()> {
         }
 
         // Remove Notification hooks
-        if let Some(notification_hooks) = hooks.get_mut("Notification").and_then(|s| s.as_array_mut()) {
+        if let Some(notification_hooks) =
+            hooks.get_mut("Notification").and_then(|s| s.as_array_mut())
+        {
             let original_len = notification_hooks.len();
             notification_hooks.retain(|hook| !contains_ahoy_marker(hook));
             removed_notification = notification_hooks.len() < original_len;
@@ -179,8 +185,7 @@ pub fn uninstall() -> Result<()> {
 
     if removed_stop || removed_notification {
         let content = serde_json::to_string_pretty(&settings)?;
-        fs::write(&settings_file, &content)
-            .context("Failed to write Claude settings.json")?;
+        fs::write(&settings_file, &content).context("Failed to write Claude settings.json")?;
         println!("Removed ahoy hooks from Claude Code:");
         if removed_stop {
             println!("  - Stop hook");
@@ -224,20 +229,25 @@ pub fn is_installed() -> bool {
         return false;
     };
 
-    settings.get("hooks")
+    settings
+        .get("hooks")
         .and_then(|h| h.get("Stop"))
         .and_then(|s| s.as_array())
-        .map(|arr| arr.iter().any(|hook| {
-            hook.get("hooks")
-                .and_then(|h| h.as_array())
-                .map(|arr| arr.iter().any(|h| {
-                    h.get("command")
-                        .and_then(|c| c.as_str())
-                        .map(|cmd| cmd.contains(HOOK_MARKER))
-                        .unwrap_or(false)
-                }))
-                .unwrap_or(false)
-        }))
+        .map(|arr| {
+            arr.iter().any(|hook| {
+                hook.get("hooks")
+                    .and_then(|h| h.as_array())
+                    .map(|arr| {
+                        arr.iter().any(|h| {
+                            h.get("command")
+                                .and_then(|c| c.as_str())
+                                .map(|cmd| cmd.contains(HOOK_MARKER))
+                                .unwrap_or(false)
+                        })
+                    })
+                    .unwrap_or(false)
+            })
+        })
         .unwrap_or(false)
 }
 
@@ -340,7 +350,7 @@ mod tests {
         // Both should have hook commands with ahoy
         for hook in hooks {
             let hooks_array = hook["hooks"].as_array().unwrap();
-            assert!(hooks_array.len() > 0);
+            assert!(!hooks_array.is_empty());
 
             let command = hooks_array[0]["command"].as_str().unwrap();
             assert!(command.contains("ahoy"));

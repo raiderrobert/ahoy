@@ -62,7 +62,13 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Send { message, title, json, from_claude, activate } => {
+        Commands::Send {
+            message,
+            title,
+            json,
+            from_claude,
+            activate,
+        } => {
             client::send::run(message, title, json, from_claude, activate)?;
         }
         Commands::Install { agent, status } => {

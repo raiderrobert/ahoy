@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read};
@@ -74,19 +74,20 @@ fn build_from_claude_stdin_reader(mut reader: impl Read, title: &str) -> Result<
         ));
     }
 
-    let hook_data: ClaudeHookData = serde_json::from_str(&stdin_data)
-        .context("Failed to parse Claude hook data from stdin")?;
+    let hook_data: ClaudeHookData =
+        serde_json::from_str(&stdin_data).context("Failed to parse Claude hook data from stdin")?;
 
     let project_name = hook_data
         .cwd
         .as_ref()
-        .and_then(|cwd| cwd.split('/').last())
+        .and_then(|cwd| cwd.split('/').next_back())
         .unwrap_or("project");
 
     if let Some(tool_name) = &hook_data.tool_name {
         let tool_desc = if let Some(input) = &hook_data.tool_input {
             // Try to get command for Bash, or file_path for Read/Write/Edit
-            input.get("command")
+            input
+                .get("command")
                 .or_else(|| input.get("file_path"))
                 .or_else(|| input.get("pattern"))
                 .and_then(|v| v.as_str())
@@ -141,38 +142,27 @@ fn extract_last_prompt(transcript_path: &str) -> Result<String> {
             continue;
         }
 
-        if let Ok(entry) = serde_json::from_str::<TranscriptLine>(&line) {
-            if entry.line_type.as_deref() == Some("user") {
-                if let Some(msg) = entry.message {
-                    if let Some(content) = msg.content {
+        if let Ok(entry) = serde_json::from_str::<TranscriptLine>(&line)
+            && entry.line_type.as_deref() == Some("user")
+                && let Some(msg) = entry.message
+                    && let Some(content) = msg.content {
                         // Content can be a string or array
                         let text = match content {
                             serde_json::Value::String(s) => s,
-                            serde_json::Value::Array(arr) => {
-                                arr.iter()
-                                    .filter_map(|item| {
-                                        item.get("text").and_then(|t| t.as_str())
-                                    })
-                                    .collect::<Vec<_>>()
-                                    .join(" ")
-                            }
+                            serde_json::Value::Array(arr) => arr
+                                .iter()
+                                .filter_map(|item| item.get("text").and_then(|t| t.as_str()))
+                                .collect::<Vec<_>>()
+                                .join(" "),
                             _ => continue,
                         };
 
-                        let cleaned = text
-                            .lines()
-                            .next()
-                            .unwrap_or(&text)
-                            .trim()
-                            .to_string();
+                        let cleaned = text.lines().next().unwrap_or(&text).trim().to_string();
 
                         if !cleaned.is_empty() {
                             last_user_content = Some(cleaned);
                         }
                     }
-                }
-            }
-        }
     }
 
     last_user_content.ok_or_else(|| anyhow::anyhow!("No user message found in transcript"))
@@ -192,7 +182,11 @@ mod tests {
     #[test]
     fn test_extract_last_prompt_simple_string() {
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"{{"type":"user","message":{{"content":"Fix the bug"}}}}"#).unwrap();
+        writeln!(
+            file,
+            r#"{{"type":"user","message":{{"content":"Fix the bug"}}}}"#
+        )
+        .unwrap();
 
         let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
         assert_eq!(result, "Fix the bug");
@@ -201,9 +195,21 @@ mod tests {
     #[test]
     fn test_extract_last_prompt_multiple_messages_returns_last() {
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"{{"type":"user","message":{{"content":"First message"}}}}"#).unwrap();
-        writeln!(file, r#"{{"type":"assistant","message":{{"content":"Response"}}}}"#).unwrap();
-        writeln!(file, r#"{{"type":"user","message":{{"content":"Second message"}}}}"#).unwrap();
+        writeln!(
+            file,
+            r#"{{"type":"user","message":{{"content":"First message"}}}}"#
+        )
+        .unwrap();
+        writeln!(
+            file,
+            r#"{{"type":"assistant","message":{{"content":"Response"}}}}"#
+        )
+        .unwrap();
+        writeln!(
+            file,
+            r#"{{"type":"user","message":{{"content":"Second message"}}}}"#
+        )
+        .unwrap();
 
         let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
         assert_eq!(result, "Second message");
@@ -221,7 +227,11 @@ mod tests {
     #[test]
     fn test_extract_last_prompt_multiline_takes_first_line() {
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"{{"type":"user","message":{{"content":"First line\nSecond line\nThird line"}}}}"#).unwrap();
+        writeln!(
+            file,
+            r#"{{"type":"user","message":{{"content":"First line\nSecond line\nThird line"}}}}"#
+        )
+        .unwrap();
 
         let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
         assert_eq!(result, "First line");
@@ -233,25 +243,47 @@ mod tests {
 
         let result = extract_last_prompt(file.path().to_str().unwrap());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No user message found"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("No user message found")
+        );
     }
 
     #[test]
     fn test_extract_last_prompt_no_user_messages() {
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"{{"type":"assistant","message":{{"content":"Only assistant"}}}}"#).unwrap();
-        writeln!(file, r#"{{"type":"system","message":{{"content":"Only system"}}}}"#).unwrap();
+        writeln!(
+            file,
+            r#"{{"type":"assistant","message":{{"content":"Only assistant"}}}}"#
+        )
+        .unwrap();
+        writeln!(
+            file,
+            r#"{{"type":"system","message":{{"content":"Only system"}}}}"#
+        )
+        .unwrap();
 
         let result = extract_last_prompt(file.path().to_str().unwrap());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No user message found"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("No user message found")
+        );
     }
 
     #[test]
     fn test_extract_last_prompt_invalid_json_skipped() {
         let mut file = NamedTempFile::new().unwrap();
         writeln!(file, "invalid json line").unwrap();
-        writeln!(file, r#"{{"type":"user","message":{{"content":"Valid message"}}}}"#).unwrap();
+        writeln!(
+            file,
+            r#"{{"type":"user","message":{{"content":"Valid message"}}}}"#
+        )
+        .unwrap();
         writeln!(file, "another invalid line").unwrap();
 
         let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
@@ -262,7 +294,11 @@ mod tests {
     fn test_extract_last_prompt_whitespace_only_skipped() {
         let mut file = NamedTempFile::new().unwrap();
         writeln!(file, r#"{{"type":"user","message":{{"content":"   "}}}}"#).unwrap();
-        writeln!(file, r#"{{"type":"user","message":{{"content":"Real message"}}}}"#).unwrap();
+        writeln!(
+            file,
+            r#"{{"type":"user","message":{{"content":"Real message"}}}}"#
+        )
+        .unwrap();
 
         let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
         assert_eq!(result, "Real message");
@@ -391,11 +427,14 @@ mod tests {
     fn test_build_from_stdin_tool_truncation_at_60_chars() {
         // Create a command that's exactly 61 chars (should truncate)
         let long_command = "a".repeat(61);
-        let json = format!(r#"{{
+        let json = format!(
+            r#"{{
             "cwd": "/Users/test/myproject",
             "tool_name": "Bash",
             "tool_input": {{"command": "{}"}}
-        }}"#, long_command);
+        }}"#,
+            long_command
+        );
         let mock_stdin = std::io::Cursor::new(json);
         let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
 
@@ -409,11 +448,14 @@ mod tests {
     fn test_build_from_stdin_tool_no_truncation_at_60_chars() {
         // Command exactly 60 chars should NOT truncate
         let command = "a".repeat(60);
-        let json = format!(r#"{{
+        let json = format!(
+            r#"{{
             "cwd": "/Users/test/myproject",
             "tool_name": "Bash",
             "tool_input": {{"command": "{}"}}
-        }}"#, command);
+        }}"#,
+            command
+        );
         let mock_stdin = std::io::Cursor::new(json);
         let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
 
@@ -452,12 +494,19 @@ mod tests {
     fn test_build_from_stdin_stop_hook_with_transcript() {
         // Create a temp transcript first
         let mut transcript = NamedTempFile::new().unwrap();
-        writeln!(transcript, r#"{{"type":"user","message":{{"content":"Deploy to production"}}}}"#).unwrap();
+        writeln!(
+            transcript,
+            r#"{{"type":"user","message":{{"content":"Deploy to production"}}}}"#
+        )
+        .unwrap();
 
-        let json = format!(r#"{{
+        let json = format!(
+            r#"{{
             "cwd": "/Users/test/myproject",
             "transcript_path": "{}"
-        }}"#, transcript.path().to_str().unwrap());
+        }}"#,
+            transcript.path().to_str().unwrap()
+        );
 
         let mock_stdin = std::io::Cursor::new(json);
         let result = build_from_claude_stdin_reader(mock_stdin, "Claude Code").unwrap();
@@ -479,12 +528,20 @@ mod tests {
         // Create a very long prompt (101 chars)
         let mut transcript = NamedTempFile::new().unwrap();
         let long_prompt = "a".repeat(101);
-        writeln!(transcript, r#"{{"type":"user","message":{{"content":"{}"}}}}"#, long_prompt).unwrap();
+        writeln!(
+            transcript,
+            r#"{{"type":"user","message":{{"content":"{}"}}}}"#,
+            long_prompt
+        )
+        .unwrap();
 
-        let json = format!(r#"{{
+        let json = format!(
+            r#"{{
             "cwd": "/Users/test/myproject",
             "transcript_path": "{}"
-        }}"#, transcript.path().to_str().unwrap());
+        }}"#,
+            transcript.path().to_str().unwrap()
+        );
 
         let mock_stdin = std::io::Cursor::new(json);
         let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
@@ -500,12 +557,20 @@ mod tests {
         // Prompt exactly 100 chars should NOT truncate
         let mut transcript = NamedTempFile::new().unwrap();
         let prompt = "a".repeat(100);
-        writeln!(transcript, r#"{{"type":"user","message":{{"content":"{}"}}}}"#, prompt).unwrap();
+        writeln!(
+            transcript,
+            r#"{{"type":"user","message":{{"content":"{}"}}}}"#,
+            prompt
+        )
+        .unwrap();
 
-        let json = format!(r#"{{
+        let json = format!(
+            r#"{{
             "cwd": "/Users/test/myproject",
             "transcript_path": "{}"
-        }}"#, transcript.path().to_str().unwrap());
+        }}"#,
+            transcript.path().to_str().unwrap()
+        );
 
         let mock_stdin = std::io::Cursor::new(json);
         let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();

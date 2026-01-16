@@ -69,8 +69,7 @@ mod tests {
 
     #[test]
     fn test_notification_with_activate() {
-        let notif = Notification::new("Title", "Body")
-            .with_activate("com.apple.Terminal");
+        let notif = Notification::new("Title", "Body").with_activate("com.apple.Terminal");
         assert_eq!(notif.activate, Some("com.apple.Terminal".to_string()));
     }
 

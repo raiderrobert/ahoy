@@ -1,5 +1,5 @@
 use ahoy::install::claude;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use serial_test::serial;
 use std::fs;
 use tempfile::TempDir;
@@ -18,7 +18,11 @@ fn write_settings(temp_dir: &TempDir, content: Value) {
     let claude_dir = temp_dir.path().join(".claude");
     fs::create_dir_all(&claude_dir).unwrap();
     let settings_path = claude_dir.join("settings.json");
-    fs::write(&settings_path, serde_json::to_string_pretty(&content).unwrap()).unwrap();
+    fs::write(
+        &settings_path,
+        serde_json::to_string_pretty(&content).unwrap(),
+    )
+    .unwrap();
 }
 
 // Helper to read settings.json
@@ -185,20 +189,23 @@ fn test_uninstall_preserves_other_hooks() {
     let temp_dir = setup_test_env();
 
     // Create settings with ahoy hooks AND other hooks
-    write_settings(&temp_dir, json!({
-        "hooks": {
-            "Stop": [
-                {
-                    "matcher": "",
-                    "hooks": [{
-                        "type": "command",
-                        "command": "/other/tool --flag",
-                        "timeout": 5000
-                    }]
-                }
-            ]
-        }
-    }));
+    write_settings(
+        &temp_dir,
+        json!({
+            "hooks": {
+                "Stop": [
+                    {
+                        "matcher": "",
+                        "hooks": [{
+                            "type": "command",
+                            "command": "/other/tool --flag",
+                            "timeout": 5000
+                        }]
+                    }
+                ]
+            }
+        }),
+    );
 
     claude::install().unwrap();
 
