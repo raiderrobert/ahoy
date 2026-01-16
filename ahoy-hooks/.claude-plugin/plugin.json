@@ -1,0 +1,8 @@
+{
+  "name": "ahoy-hooks",
+  "version": "1.0.0",
+  "description": "Desktop notifications for Claude Code via Ahoy",
+  "author": {
+    "name": "Robert Roskam"
+  }
+}

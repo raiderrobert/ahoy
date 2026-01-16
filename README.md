@@ -40,7 +40,9 @@ ahoy send --activate com.apple.Terminal "Done"  # Focus Terminal when clicked
 
 ### Claude Code integration
 
-Install hooks to get notifications automatically:
+There are two ways to set up Claude Code notifications:
+
+#### Option 1: CLI install (recommended)
 
 ```bash
 ahoy install claude
@@ -51,13 +53,27 @@ This adds hooks to `~/.claude/settings.json` that trigger notifications when:
 - **Idle prompt**: Claude is waiting for your input
 - **Permission prompt**: Claude needs permission to proceed
 
-Clicking a notification will bring your terminal to the front.
-
 To remove hooks:
 
 ```bash
 ahoy uninstall claude
 ```
+
+#### Option 2: Claude Code plugin
+
+If you prefer using the Claude Code plugin system:
+
+```bash
+# First, install the ahoy binary
+curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | bash
+
+# Then install the hooks plugin in Claude Code
+/plugin install github:raiderrobert/ahoy/ahoy-hooks
+```
+
+The plugin installs the same hooks as the CLI method.
+
+Clicking a notification will bring your terminal to the front.
 
 ## How it works
 

@@ -1,0 +1,39 @@
+{
+  "description": "Ahoy notification hooks for Claude Code",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.ahoy/bin/ahoy send --from-claude -t 'Claude Code' --activate \"$__CFBundleIdentifier\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.ahoy/bin/ahoy send -t 'Claude Code' 'Waiting for your input' --activate \"$__CFBundleIdentifier\"",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.ahoy/bin/ahoy send --from-claude -t 'Claude Code' --activate \"$__CFBundleIdentifier\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}
