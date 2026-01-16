@@ -16,6 +16,12 @@ if [ -f "$AHOY_BIN" ]; then
     "$AHOY_BIN" uninstall claude 2>/dev/null || true
 fi
 
+# Unregister from macOS Launch Services
+if [[ "$OSTYPE" == "darwin"* ]] && [ -d "$AHOY_HOME/Ahoy.app" ]; then
+    echo "Unregistering from macOS Launch Services..."
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "$AHOY_HOME/Ahoy.app" 2>/dev/null || true
+fi
+
 # Remove ahoy directory
 if [ -d "$AHOY_HOME" ]; then
     echo "Removing $AHOY_HOME..."

@@ -78,6 +78,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     xattr -cr "$AHOY_APP" 2>/dev/null || true
     codesign -s - "$AHOY_BIN/ahoy" 2>/dev/null || true
     codesign -s - "$AHOY_APP/Contents/MacOS/ahoy-notify" 2>/dev/null || true
+
+    echo "Registering with macOS Launch Services..."
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$AHOY_APP"
 fi
 
 echo ""
