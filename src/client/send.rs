@@ -60,9 +60,14 @@ pub fn run(
 }
 
 fn build_from_claude_stdin(title: &str) -> Result<Notification> {
-    // Read stdin
+    build_from_claude_stdin_reader(io::stdin(), title)
+}
+
+// Internal function for testing - accepts any reader
+fn build_from_claude_stdin_reader(mut reader: impl Read, title: &str) -> Result<Notification> {
+    // Read from reader
     let mut stdin_data = String::new();
-    io::stdin().read_to_string(&mut stdin_data)?;
+    reader.read_to_string(&mut stdin_data)?;
 
     if stdin_data.is_empty() {
         return Ok(Notification::new(
@@ -186,4 +191,335 @@ fn extract_last_prompt(transcript_path: &str) -> Result<String> {
 fn send_notification(notification: &Notification) -> Result<()> {
     info!("Showing notification: {:?}", notification);
     notify::show(notification)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn test_extract_last_prompt_simple_string() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"{{"type":"user","message":{{"content":"Fix the bug"}}}}"#).unwrap();
+
+        let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
+        assert_eq!(result, "Fix the bug");
+    }
+
+    #[test]
+    fn test_extract_last_prompt_multiple_messages_returns_last() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"{{"type":"user","message":{{"content":"First message"}}}}"#).unwrap();
+        writeln!(file, r#"{{"type":"assistant","message":{{"content":"Response"}}}}"#).unwrap();
+        writeln!(file, r#"{{"type":"user","message":{{"content":"Second message"}}}}"#).unwrap();
+
+        let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
+        assert_eq!(result, "Second message");
+    }
+
+    #[test]
+    fn test_extract_last_prompt_array_content() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"{{"type":"user","message":{{"content":[{{"text":"First part"}},{{"text":"Second part"}}]}}}}"#).unwrap();
+
+        let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
+        assert_eq!(result, "First part Second part");
+    }
+
+    #[test]
+    fn test_extract_last_prompt_multiline_takes_first_line() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"{{"type":"user","message":{{"content":"First line\nSecond line\nThird line"}}}}"#).unwrap();
+
+        let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
+        assert_eq!(result, "First line");
+    }
+
+    #[test]
+    fn test_extract_last_prompt_empty_file() {
+        let file = NamedTempFile::new().unwrap();
+
+        let result = extract_last_prompt(file.path().to_str().unwrap());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("No user message found"));
+    }
+
+    #[test]
+    fn test_extract_last_prompt_no_user_messages() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"{{"type":"assistant","message":{{"content":"Only assistant"}}}}"#).unwrap();
+        writeln!(file, r#"{{"type":"system","message":{{"content":"Only system"}}}}"#).unwrap();
+
+        let result = extract_last_prompt(file.path().to_str().unwrap());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("No user message found"));
+    }
+
+    #[test]
+    fn test_extract_last_prompt_invalid_json_skipped() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "invalid json line").unwrap();
+        writeln!(file, r#"{{"type":"user","message":{{"content":"Valid message"}}}}"#).unwrap();
+        writeln!(file, "another invalid line").unwrap();
+
+        let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
+        assert_eq!(result, "Valid message");
+    }
+
+    #[test]
+    fn test_extract_last_prompt_whitespace_only_skipped() {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, r#"{{"type":"user","message":{{"content":"   "}}}}"#).unwrap();
+        writeln!(file, r#"{{"type":"user","message":{{"content":"Real message"}}}}"#).unwrap();
+
+        let result = extract_last_prompt(file.path().to_str().unwrap()).unwrap();
+        assert_eq!(result, "Real message");
+    }
+
+    #[test]
+    fn test_extract_last_prompt_missing_file() {
+        let result = extract_last_prompt("/nonexistent/file.jsonl");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_extract_last_prompt_with_fixture() {
+        // Test with the simple fixture we created
+        let fixture_path = std::env::current_dir()
+            .unwrap()
+            .join("tests/fixtures/transcripts/simple.jsonl");
+
+        let result = extract_last_prompt(fixture_path.to_str().unwrap()).unwrap();
+        assert_eq!(result, "Write a test for it");
+    }
+
+    #[test]
+    fn test_extract_last_prompt_array_fixture() {
+        let fixture_path = std::env::current_dir()
+            .unwrap()
+            .join("tests/fixtures/transcripts/array_content.jsonl");
+
+        let result = extract_last_prompt(fixture_path.to_str().unwrap()).unwrap();
+        assert_eq!(result, "Please review this code");
+    }
+
+    #[test]
+    fn test_extract_last_prompt_multiline_fixture() {
+        let fixture_path = std::env::current_dir()
+            .unwrap()
+            .join("tests/fixtures/transcripts/multiline.jsonl");
+
+        let result = extract_last_prompt(fixture_path.to_str().unwrap()).unwrap();
+        assert_eq!(result, "First line");
+    }
+
+    #[test]
+    fn test_extract_last_prompt_empty_fixture() {
+        let fixture_path = std::env::current_dir()
+            .unwrap()
+            .join("tests/fixtures/transcripts/empty.jsonl");
+
+        let result = extract_last_prompt(fixture_path.to_str().unwrap());
+        assert!(result.is_err());
+    }
+
+    // ========== build_from_claude_stdin_reader tests ==========
+
+    #[test]
+    fn test_build_from_stdin_empty() {
+        let mock_stdin = std::io::Cursor::new("");
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
+
+        assert_eq!(result.title, "Test");
+        assert_eq!(result.body, "Task finished");
+    }
+
+    #[test]
+    fn test_build_from_stdin_invalid_json() {
+        let mock_stdin = std::io::Cursor::new("not valid json");
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test");
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("parse"));
+    }
+
+    #[test]
+    fn test_build_from_stdin_permission_prompt_with_command() {
+        let json = r#"{
+            "cwd": "/Users/test/myproject",
+            "tool_name": "Bash",
+            "tool_input": {"command": "npm install"}
+        }"#;
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Claude Code").unwrap();
+
+        assert_eq!(result.title, "Claude Code");
+        assert_eq!(result.body, "[myproject] Bash: npm install");
+    }
+
+    #[test]
+    fn test_build_from_stdin_permission_prompt_with_file_path() {
+        let json = r#"{
+            "cwd": "/Users/test/myproject",
+            "tool_name": "Read",
+            "tool_input": {"file_path": "/path/to/file.rs"}
+        }"#;
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Claude Code").unwrap();
+
+        assert_eq!(result.body, "[myproject] Read: /path/to/file.rs");
+    }
+
+    #[test]
+    fn test_build_from_stdin_permission_prompt_with_pattern() {
+        let json = r#"{
+            "cwd": "/Users/test/myproject",
+            "tool_name": "Grep",
+            "tool_input": {"pattern": "TODO"}
+        }"#;
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Claude Code").unwrap();
+
+        assert_eq!(result.body, "[myproject] Grep: TODO");
+    }
+
+    #[test]
+    fn test_build_from_stdin_permission_prompt_no_tool_input() {
+        let json = r#"{
+            "cwd": "/Users/test/myproject",
+            "tool_name": "Bash"
+        }"#;
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Claude Code").unwrap();
+
+        assert_eq!(result.body, "[myproject] Needs permission: Bash");
+    }
+
+    #[test]
+    fn test_build_from_stdin_tool_truncation_at_60_chars() {
+        // Create a command that's exactly 61 chars (should truncate)
+        let long_command = "a".repeat(61);
+        let json = format!(r#"{{
+            "cwd": "/Users/test/myproject",
+            "tool_name": "Bash",
+            "tool_input": {{"command": "{}"}}
+        }}"#, long_command);
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
+
+        // Should be truncated to 57 chars + "..."
+        assert!(result.body.contains("..."));
+        let command_part = result.body.split(": ").nth(1).unwrap();
+        assert_eq!(command_part.len(), 60); // 57 + "..."
+    }
+
+    #[test]
+    fn test_build_from_stdin_tool_no_truncation_at_60_chars() {
+        // Command exactly 60 chars should NOT truncate
+        let command = "a".repeat(60);
+        let json = format!(r#"{{
+            "cwd": "/Users/test/myproject",
+            "tool_name": "Bash",
+            "tool_input": {{"command": "{}"}}
+        }}"#, command);
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
+
+        assert!(!result.body.contains("..."));
+    }
+
+    #[test]
+    fn test_build_from_stdin_project_name_extraction() {
+        let json = r#"{"cwd": "/home/user/projects/awesome-app"}"#;
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
+
+        assert!(result.body.starts_with("[awesome-app]"));
+    }
+
+    #[test]
+    fn test_build_from_stdin_project_name_no_cwd() {
+        let json = r#"{}"#;
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
+
+        assert!(result.body.starts_with("[project]"));
+    }
+
+    #[test]
+    fn test_build_from_stdin_project_name_trailing_slash() {
+        let json = r#"{"cwd": "/home/user/myproject/"}"#;
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
+
+        // Trailing slash results in empty string, falls back to "project"
+        assert!(result.body.starts_with("[]") || result.body.starts_with("[project]"));
+    }
+
+    #[test]
+    fn test_build_from_stdin_stop_hook_with_transcript() {
+        // Create a temp transcript first
+        let mut transcript = NamedTempFile::new().unwrap();
+        writeln!(transcript, r#"{{"type":"user","message":{{"content":"Deploy to production"}}}}"#).unwrap();
+
+        let json = format!(r#"{{
+            "cwd": "/Users/test/myproject",
+            "transcript_path": "{}"
+        }}"#, transcript.path().to_str().unwrap());
+
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Claude Code").unwrap();
+
+        assert_eq!(result.body, "[myproject] Deploy to production");
+    }
+
+    #[test]
+    fn test_build_from_stdin_stop_hook_no_transcript() {
+        let json = r#"{"cwd": "/Users/test/myproject"}"#;
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
+
+        assert_eq!(result.body, "[myproject] Task finished");
+    }
+
+    #[test]
+    fn test_build_from_stdin_prompt_truncation_at_100_chars() {
+        // Create a very long prompt (101 chars)
+        let mut transcript = NamedTempFile::new().unwrap();
+        let long_prompt = "a".repeat(101);
+        writeln!(transcript, r#"{{"type":"user","message":{{"content":"{}"}}}}"#, long_prompt).unwrap();
+
+        let json = format!(r#"{{
+            "cwd": "/Users/test/myproject",
+            "transcript_path": "{}"
+        }}"#, transcript.path().to_str().unwrap());
+
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
+
+        // Should be truncated to 97 chars + "..."
+        assert!(result.body.contains("..."));
+        let prompt_part = result.body.split("] ").nth(1).unwrap();
+        assert_eq!(prompt_part.len(), 100); // 97 + "..."
+    }
+
+    #[test]
+    fn test_build_from_stdin_prompt_no_truncation_at_100_chars() {
+        // Prompt exactly 100 chars should NOT truncate
+        let mut transcript = NamedTempFile::new().unwrap();
+        let prompt = "a".repeat(100);
+        writeln!(transcript, r#"{{"type":"user","message":{{"content":"{}"}}}}"#, prompt).unwrap();
+
+        let json = format!(r#"{{
+            "cwd": "/Users/test/myproject",
+            "transcript_path": "{}"
+        }}"#, transcript.path().to_str().unwrap());
+
+        let mock_stdin = std::io::Cursor::new(json);
+        let result = build_from_claude_stdin_reader(mock_stdin, "Test").unwrap();
+
+        assert!(!result.body.contains("..."));
+    }
 }

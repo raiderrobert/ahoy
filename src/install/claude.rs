@@ -8,6 +8,11 @@ use crate::config;
 const HOOK_MARKER: &str = "ahoy";
 
 fn settings_path() -> PathBuf {
+    // Allow test override via env var
+    if let Ok(test_home) = std::env::var("AHOY_TEST_HOME") {
+        return PathBuf::from(test_home).join(".claude/settings.json");
+    }
+
     dirs::home_dir()
         .expect("Could not determine home directory")
         .join(".claude/settings.json")
