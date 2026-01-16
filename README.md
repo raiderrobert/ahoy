@@ -68,7 +68,8 @@ If you prefer using the Claude Code plugin system:
 curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | bash
 
 # Then install the hooks plugin in Claude Code
-/plugin install github:raiderrobert/ahoy/ahoy-hooks
+/plugin marketplace add raiderrobert/ahoy
+/plugin install ahoy-hooks@ahoy-hooks
 ```
 
 The plugin installs the same hooks as the CLI method.
