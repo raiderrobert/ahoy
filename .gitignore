@@ -4,4 +4,4 @@
 # Claude Code and Beads files
 CLAUDE.md
 .beads/
-.claude/settings.local.json
+.claude/
