@@ -1,0 +1,6 @@
+pre-commit:
+  commands:
+    rustfmt:
+      glob: "*.rs"
+      run: cargo fmt --check
+      fail_text: "Run 'cargo fmt' to fix formatting"
