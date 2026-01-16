@@ -4,8 +4,7 @@
   "version": "1.0.0",
   "description": "Desktop notifications for Claude Code",
   "owner": {
-    "name": "Robert Roskam",
-    "email": "raiderrobert@gmail.com"
+    "name": "Robert Roskam"
   },
   "plugins": [
     {
