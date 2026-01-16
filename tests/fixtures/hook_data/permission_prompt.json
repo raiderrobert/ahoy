@@ -1,0 +1,7 @@
+{
+  "cwd": "/Users/test/repos/myproject",
+  "session_id": "abc123",
+  "tool_name": "Bash",
+  "tool_input": {"command": "npm install"},
+  "hook_event_name": "Notification"
+}

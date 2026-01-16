@@ -3,12 +3,8 @@
 #[cfg(target_os = "macos")]
 embed_plist::embed_info_plist!("../Info.plist");
 
+use ahoy::{client, install};
 use clap::{Parser, Subcommand};
-
-mod client;
-mod config;
-mod install;
-mod notify;
 
 #[derive(Parser)]
 #[command(name = "ahoy")]

@@ -1,0 +1,6 @@
+{
+  "transcript_path": "/tmp/transcript.jsonl",
+  "cwd": "/Users/test/repos/myproject",
+  "session_id": "abc123",
+  "hook_event_name": "Stop"
+}

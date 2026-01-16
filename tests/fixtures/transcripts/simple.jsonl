@@ -1,0 +1,3 @@
+{"type":"user","message":{"content":"Fix the authentication bug"}}
+{"type":"assistant","message":{"content":"I'll help fix that authentication bug"}}
+{"type":"user","message":{"content":"Write a test for it"}}

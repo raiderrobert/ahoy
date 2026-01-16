@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [{
+          "type": "command",
+          "command": "/Users/test/.ahoy/bin/ahoy send --from-claude -t 'Claude Code' --activate \"$__CFBundleIdentifier\"",
+          "timeout": 5000
+        }]
+      }
+    ],
+    "Notification": []
+  }
+}

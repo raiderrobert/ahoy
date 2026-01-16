@@ -245,3 +245,118 @@ pub fn is_installed() -> bool {
         }))
         .unwrap_or(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_contains_ahoy_marker_true() {
+        let hook = json!({
+            "matcher": "",
+            "hooks": [{
+                "type": "command",
+                "command": "/path/to/ahoy send --from-claude",
+                "timeout": 5000
+            }]
+        });
+
+        assert!(contains_ahoy_marker(&hook));
+    }
+
+    #[test]
+    fn test_contains_ahoy_marker_false() {
+        let hook = json!({
+            "matcher": "",
+            "hooks": [{
+                "type": "command",
+                "command": "/usr/bin/other-command",
+                "timeout": 5000
+            }]
+        });
+
+        assert!(!contains_ahoy_marker(&hook));
+    }
+
+    #[test]
+    fn test_contains_ahoy_marker_empty_hooks() {
+        let hook = json!({
+            "matcher": "",
+            "hooks": []
+        });
+
+        assert!(!contains_ahoy_marker(&hook));
+    }
+
+    #[test]
+    fn test_contains_ahoy_marker_no_hooks_field() {
+        let hook = json!({
+            "matcher": ""
+        });
+
+        assert!(!contains_ahoy_marker(&hook));
+    }
+
+    #[test]
+    fn test_contains_ahoy_marker_missing_command() {
+        let hook = json!({
+            "matcher": "",
+            "hooks": [{
+                "type": "command",
+                "timeout": 5000
+            }]
+        });
+
+        assert!(!contains_ahoy_marker(&hook));
+    }
+
+    #[test]
+    fn test_create_stop_hook_format() {
+        let hook = create_stop_hook();
+
+        // Verify structure
+        assert_eq!(hook["matcher"], "");
+        assert!(hook["hooks"].is_array());
+
+        let hooks_array = hook["hooks"].as_array().unwrap();
+        assert_eq!(hooks_array.len(), 1);
+
+        let command_hook = &hooks_array[0];
+        assert_eq!(command_hook["type"], "command");
+        assert_eq!(command_hook["timeout"], 5000);
+
+        // Verify command contains ahoy
+        let command = command_hook["command"].as_str().unwrap();
+        assert!(command.contains("ahoy"));
+        assert!(command.contains("--from-claude"));
+    }
+
+    #[test]
+    fn test_create_notification_hooks_count() {
+        let hooks = create_notification_hooks();
+
+        // Should create 2 notification hooks
+        assert_eq!(hooks.len(), 2);
+
+        // Check matchers
+        assert_eq!(hooks[0]["matcher"], "idle_prompt");
+        assert_eq!(hooks[1]["matcher"], "permission_prompt");
+
+        // Both should have hook commands with ahoy
+        for hook in hooks {
+            let hooks_array = hook["hooks"].as_array().unwrap();
+            assert!(hooks_array.len() > 0);
+
+            let command = hooks_array[0]["command"].as_str().unwrap();
+            assert!(command.contains("ahoy"));
+        }
+    }
+
+    #[test]
+    fn test_ahoy_bin_path_format() {
+        let path = ahoy_bin_path();
+
+        assert!(path.contains("ahoy"));
+        assert!(path.contains(".ahoy") || path.starts_with("/"));
+    }
+}
