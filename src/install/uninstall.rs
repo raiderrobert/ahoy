@@ -2,11 +2,11 @@ use anyhow::Result;
 
 use super::claude;
 
-pub async fn run(agent: Option<String>) -> Result<()> {
+pub fn run(agent: Option<String>) -> Result<()> {
     let agent = agent.unwrap_or_else(|| "all".to_string());
 
     match agent.as_str() {
-        "claude" => claude::uninstall().await,
+        "claude" => claude::uninstall(),
         "codex" => {
             println!("Codex hook uninstall not yet implemented");
             Ok(())
@@ -21,7 +21,7 @@ pub async fn run(agent: Option<String>) -> Result<()> {
 
             // Claude Code
             println!("[Claude Code]");
-            claude::uninstall().await?;
+            claude::uninstall()?;
             println!();
 
             // TODO: Add codex and gemini when implemented

@@ -69,7 +69,7 @@ fn create_notification_hooks() -> Vec<Value> {
     ]
 }
 
-pub async fn install() -> Result<()> {
+pub fn install() -> Result<()> {
     let settings_file = settings_path();
 
     // Read existing settings or create empty object
@@ -155,7 +155,7 @@ pub async fn install() -> Result<()> {
     Ok(())
 }
 
-pub async fn uninstall() -> Result<()> {
+pub fn uninstall() -> Result<()> {
     let settings_file = settings_path();
 
     if !settings_file.exists() {

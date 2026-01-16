@@ -2,11 +2,11 @@ use anyhow::Result;
 
 use super::claude;
 
-pub async fn run(agent: Option<String>) -> Result<()> {
+pub fn run(agent: Option<String>) -> Result<()> {
     let agent = agent.unwrap_or_else(|| "all".to_string());
 
     match agent.as_str() {
-        "claude" => claude::install().await,
+        "claude" => claude::install(),
         "codex" => {
             println!("Codex hook installation not yet implemented");
             Ok(())
@@ -22,7 +22,7 @@ pub async fn run(agent: Option<String>) -> Result<()> {
             // Claude Code
             if dirs::home_dir().map(|h| h.join(".claude").exists()).unwrap_or(false) {
                 println!("[Claude Code]");
-                claude::install().await?;
+                claude::install()?;
                 println!();
             }
 

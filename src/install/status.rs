@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use super::claude;
 
-pub async fn run() -> Result<()> {
+pub fn run() -> Result<()> {
     println!("Installed hooks:");
     println!();
 

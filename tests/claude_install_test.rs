@@ -28,23 +28,23 @@ fn read_settings(temp_dir: &TempDir) -> Value {
     serde_json::from_str(&content).unwrap()
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_install_creates_settings_file() {
+fn test_install_creates_settings_file() {
     let temp_dir = setup_test_env();
 
-    claude::install().await.unwrap();
+    claude::install().unwrap();
 
     assert!(temp_dir.path().join(".claude/settings.json").exists());
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_install_to_empty_settings() {
+fn test_install_to_empty_settings() {
     let temp_dir = setup_test_env();
     write_settings(&temp_dir, json!({}));
 
-    claude::install().await.unwrap();
+    claude::install().unwrap();
 
     let settings = read_settings(&temp_dir);
     assert!(settings["hooks"].is_object());
@@ -52,13 +52,13 @@ async fn test_install_to_empty_settings() {
     assert!(settings["hooks"]["Notification"].is_array());
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_install_adds_stop_hook() {
+fn test_install_adds_stop_hook() {
     let temp_dir = setup_test_env();
     write_settings(&temp_dir, json!({}));
 
-    claude::install().await.unwrap();
+    claude::install().unwrap();
 
     let settings = read_settings(&temp_dir);
     let stop_hooks = settings["hooks"]["Stop"].as_array().unwrap();
@@ -70,13 +70,13 @@ async fn test_install_adds_stop_hook() {
     assert!(hook_command.contains("--from-claude"));
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_install_adds_notification_hooks() {
+fn test_install_adds_notification_hooks() {
     let temp_dir = setup_test_env();
     write_settings(&temp_dir, json!({}));
 
-    claude::install().await.unwrap();
+    claude::install().unwrap();
 
     let settings = read_settings(&temp_dir);
     let notification_hooks = settings["hooks"]["Notification"].as_array().unwrap();
@@ -88,15 +88,15 @@ async fn test_install_adds_notification_hooks() {
     assert_eq!(notification_hooks[1]["matcher"], "permission_prompt");
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_install_idempotent() {
+fn test_install_idempotent() {
     let temp_dir = setup_test_env();
     write_settings(&temp_dir, json!({}));
 
     // Install twice
-    claude::install().await.unwrap();
-    claude::install().await.unwrap();
+    claude::install().unwrap();
+    claude::install().unwrap();
 
     let settings = read_settings(&temp_dir);
     let stop_hooks = settings["hooks"]["Stop"].as_array().unwrap();
@@ -105,47 +105,47 @@ async fn test_install_idempotent() {
     assert_eq!(stop_hooks.len(), 1);
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_is_installed_true_after_install() {
+fn test_is_installed_true_after_install() {
     let temp_dir = setup_test_env();
     write_settings(&temp_dir, json!({}));
 
     assert!(!claude::is_installed());
 
-    claude::install().await.unwrap();
+    claude::install().unwrap();
 
     assert!(claude::is_installed());
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_is_installed_false_no_file() {
+fn test_is_installed_false_no_file() {
     let _temp_dir = setup_test_env();
     // No settings file created
 
     assert!(!claude::is_installed());
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_is_installed_false_empty_settings() {
+fn test_is_installed_false_empty_settings() {
     let temp_dir = setup_test_env();
     write_settings(&temp_dir, json!({}));
 
     assert!(!claude::is_installed());
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_uninstall_removes_hooks() {
+fn test_uninstall_removes_hooks() {
     let temp_dir = setup_test_env();
     write_settings(&temp_dir, json!({}));
 
-    claude::install().await.unwrap();
+    claude::install().unwrap();
     assert!(claude::is_installed());
 
-    claude::uninstall().await.unwrap();
+    claude::uninstall().unwrap();
 
     let settings = read_settings(&temp_dir);
     let stop_hooks = settings["hooks"]["Stop"].as_array().unwrap();
@@ -154,14 +154,14 @@ async fn test_uninstall_removes_hooks() {
     assert!(!claude::is_installed());
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_uninstall_removes_notification_hooks() {
+fn test_uninstall_removes_notification_hooks() {
     let temp_dir = setup_test_env();
     write_settings(&temp_dir, json!({}));
 
-    claude::install().await.unwrap();
-    claude::uninstall().await.unwrap();
+    claude::install().unwrap();
+    claude::uninstall().unwrap();
 
     let settings = read_settings(&temp_dir);
     let notification_hooks = settings["hooks"]["Notification"].as_array().unwrap();
@@ -169,19 +169,19 @@ async fn test_uninstall_removes_notification_hooks() {
     assert_eq!(notification_hooks.len(), 0);
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_uninstall_no_settings_file() {
+fn test_uninstall_no_settings_file() {
     let _temp_dir = setup_test_env();
     // No settings file
 
     // Should not error
-    claude::uninstall().await.unwrap();
+    claude::uninstall().unwrap();
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_uninstall_preserves_other_hooks() {
+fn test_uninstall_preserves_other_hooks() {
     let temp_dir = setup_test_env();
 
     // Create settings with ahoy hooks AND other hooks
@@ -200,13 +200,13 @@ async fn test_uninstall_preserves_other_hooks() {
         }
     }));
 
-    claude::install().await.unwrap();
+    claude::install().unwrap();
 
     // Should now have 2 Stop hooks (other + ahoy)
     let settings = read_settings(&temp_dir);
     assert_eq!(settings["hooks"]["Stop"].as_array().unwrap().len(), 2);
 
-    claude::uninstall().await.unwrap();
+    claude::uninstall().unwrap();
 
     // Should only have 1 Stop hook left (other tool)
     let settings = read_settings(&temp_dir);
@@ -218,13 +218,13 @@ async fn test_uninstall_preserves_other_hooks() {
     assert!(!remaining_command.contains("ahoy"));
 }
 
-#[tokio::test]
+#[test]
 #[serial]
-async fn test_install_creates_parent_directory() {
+fn test_install_creates_parent_directory() {
     let temp_dir = setup_test_env();
     // Don't create .claude directory
 
-    claude::install().await.unwrap();
+    claude::install().unwrap();
 
     assert!(temp_dir.path().join(".claude").exists());
     assert!(temp_dir.path().join(".claude/settings.json").exists());

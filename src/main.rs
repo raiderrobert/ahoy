@@ -56,8 +56,7 @@ enum Commands {
     },
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
@@ -73,13 +72,13 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Install { agent, status } => {
             if status {
-                install::status::run().await?;
+                install::status::run()?;
             } else {
-                install::install::run(agent).await?;
+                install::install::run(agent)?;
             }
         }
         Commands::Uninstall { agent } => {
-            install::uninstall::run(agent).await?;
+            install::uninstall::run(agent)?;
         }
     }
 
