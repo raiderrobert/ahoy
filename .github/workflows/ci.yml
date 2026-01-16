@@ -37,7 +37,7 @@ jobs:
         run: cargo build --release
 
       - name: Build Swift helper
-        run: swiftc -O -o Ahoy.app/Contents/MacOS/ahoy-notify swift/ahoy-notify.swift
+        run: make -C swift build sign
 
   lint:
     runs-on: macos-latest

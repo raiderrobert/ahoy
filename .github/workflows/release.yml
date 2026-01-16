@@ -21,12 +21,10 @@ jobs:
         run: cargo build --release
 
       - name: Build Swift helper
-        run: swiftc -O -o Ahoy.app/Contents/MacOS/ahoy-notify swift/ahoy-notify.swift
+        run: make -C swift build sign
 
-      - name: Code sign binaries
-        run: |
-          codesign -s - target/release/ahoy
-          codesign -s - Ahoy.app/Contents/MacOS/ahoy-notify
+      - name: Code sign Rust binary
+        run: codesign -s - target/release/ahoy
 
       - name: Create release archive
         run: |
