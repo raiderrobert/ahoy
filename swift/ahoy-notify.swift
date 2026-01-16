@@ -159,38 +159,15 @@ notification.soundName = soundName
 NSUserNotificationCenter.default.deliver(notification)
 fputs("Notification delivered\n", stderr)
 
-// If we have an activation target, wait for user to click with retry logic:
-// - Wait 30s for response
-// - If no response, retry once
-// - Wait another 30s
-// - Give up
+// If we have an activation target, wait for user to click
+// Otherwise just keep the process alive briefly so notification can be delivered
 if activateBundleId != nil {
-    let retryDelay: TimeInterval = 30
-
-    // First wait
-    var timeout = Date(timeIntervalSinceNow: retryDelay)
+    // Wait up to 60 seconds for user to click the notification
+    let timeout = Date(timeIntervalSinceNow: 60)
     while !notificationDelegate.didActivate && Date() < timeout {
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
     }
-
-    // If user didn't respond, retry once
-    if !notificationDelegate.didActivate {
-        fputs("No response after 30s, retrying notification\n", stderr)
-
-        // Remove old notification and deliver again
-        NSUserNotificationCenter.default.removeDeliveredNotification(notification)
-        NSUserNotificationCenter.default.deliver(notification)
-
-        // Second wait
-        timeout = Date(timeIntervalSinceNow: retryDelay)
-        while !notificationDelegate.didActivate && Date() < timeout {
-            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-        }
-
-        if !notificationDelegate.didActivate {
-            fputs("No response after retry, giving up\n", stderr)
-        }
-    }
 } else {
+    // No activation target, just wait briefly for notification to be delivered
     RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
 }
