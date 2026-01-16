@@ -144,25 +144,26 @@ fn extract_last_prompt(transcript_path: &str) -> Result<String> {
 
         if let Ok(entry) = serde_json::from_str::<TranscriptLine>(&line)
             && entry.line_type.as_deref() == Some("user")
-                && let Some(msg) = entry.message
-                    && let Some(content) = msg.content {
-                        // Content can be a string or array
-                        let text = match content {
-                            serde_json::Value::String(s) => s,
-                            serde_json::Value::Array(arr) => arr
-                                .iter()
-                                .filter_map(|item| item.get("text").and_then(|t| t.as_str()))
-                                .collect::<Vec<_>>()
-                                .join(" "),
-                            _ => continue,
-                        };
+            && let Some(msg) = entry.message
+            && let Some(content) = msg.content
+        {
+            // Content can be a string or array
+            let text = match content {
+                serde_json::Value::String(s) => s,
+                serde_json::Value::Array(arr) => arr
+                    .iter()
+                    .filter_map(|item| item.get("text").and_then(|t| t.as_str()))
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                _ => continue,
+            };
 
-                        let cleaned = text.lines().next().unwrap_or(&text).trim().to_string();
+            let cleaned = text.lines().next().unwrap_or(&text).trim().to_string();
 
-                        if !cleaned.is_empty() {
-                            last_user_content = Some(cleaned);
-                        }
-                    }
+            if !cleaned.is_empty() {
+                last_user_content = Some(cleaned);
+            }
+        }
     }
 
     last_user_content.ok_or_else(|| anyhow::anyhow!("No user message found in transcript"))
