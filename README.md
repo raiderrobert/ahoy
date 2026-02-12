@@ -42,37 +42,41 @@ ahoy send --activate com.apple.Terminal "Done"  # Focus Terminal when clicked
 
 There are two ways to set up Claude Code notifications:
 
-#### Option 1: CLI install (recommended)
+#### Option 1: Claude Code plugin (recommended)
+
+First, install the ahoy binary:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | bash
+```
+
+Then inside Claude Code, register the marketplace and install the hooks plugin:
+
+```
+/plugin marketplace add raiderrobert/ahoy
+/plugin install ahoy-hooks@ahoy
+```
+
+This installs hooks that trigger notifications when:
+- **Stop**: Claude finishes a task (shows the last user prompt)
+- **Idle prompt**: Claude is waiting for your input
+- **Permission prompt**: Claude needs permission to proceed
+
+To remove, uninstall the plugin from Claude Code.
+
+#### Option 2: CLI install
+
+If you prefer managing hooks manually via the CLI:
 
 ```bash
 ahoy install claude
 ```
 
-This adds hooks to `~/.claude/settings.json` that trigger notifications when:
-- **Stop**: Claude finishes a task (shows the last user prompt)
-- **Idle prompt**: Claude is waiting for your input
-- **Permission prompt**: Claude needs permission to proceed
-
-To remove hooks:
+This writes hooks directly to `~/.claude/settings.json`. To remove:
 
 ```bash
 ahoy uninstall claude
 ```
-
-#### Option 2: Claude Code plugin
-
-If you prefer using the Claude Code plugin system:
-
-```bash
-# First, install the ahoy binary
-curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | bash
-
-# Then install the hooks plugin in Claude Code
-/plugin marketplace add raiderrobert/ahoy
-/plugin install ahoy-hooks@ahoy-hooks
-```
-
-The plugin installs the same hooks as the CLI method.
 
 Clicking a notification will bring your terminal to the front.
 
