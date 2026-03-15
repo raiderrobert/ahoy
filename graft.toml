@@ -7,3 +7,8 @@ dest = ".github/workflows/release-please.yml"
 source = "gh:raiderrobert/graft/.github/workflows/pr-title.yml"
 version = "v0.1.1"
 dest = ".github/workflows/pr-title.yml"
+
+[grafts.justfile]
+source = "gh:raiderrobert/graft/justfile"
+version = "v0.1.0"
+dest = "justfile"

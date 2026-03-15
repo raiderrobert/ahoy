@@ -9,3 +9,9 @@ source = "gh:raiderrobert/graft/.github/workflows/pr-title.yml"
 version = "v0.1.1"
 commit = "dde2306688081ecd232f07f793e284d7c288d796"
 checksum = "sha256:fff7c73efda8b9ebd50701149d0a6fb0142ad2b48580235ee3ae8ae5936cfbf3"
+
+[grafts.justfile]
+source = "gh:raiderrobert/graft/justfile"
+version = "v0.1.0"
+commit = "653e9d02275f59c0a365b5aa1049e6e3d4b8d37e"
+checksum = "sha256:503d0c71c76ca5eed93c5385a1f8b656c9f60a57cd807ea8473725c16addf4fe"
