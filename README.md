@@ -1,16 +1,19 @@
-# Ahoy
+# ahoy
 
-Desktop notifications for LLM coding agents.
+Native macOS notifications for AI coding agents.
 
-When Claude Code (or other AI coding tools) finishes a task, needs your input, or requires permission, Ahoy shows a native macOS notification so you know it's time to check in.
+- **Walk away from long tasks.** Get pinged when your agent finishes, gets stuck, or needs permission.
+- **Signal, not noise.** Three events, nothing else — done, waiting for input, waiting for permission.
+- **Click to refocus.** Tap the notification and your terminal comes to the front.
+- **No daemon, no polling.** Hooks call a CLI binary on demand. Zero background overhead.
 
-## Quick Install
+## Install
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | bash
 ```
 
-Or clone and install manually:
+Or build from source:
 
 ```bash
 git clone https://github.com/raiderrobert/ahoy.git
@@ -18,100 +21,55 @@ cd ahoy
 ./install.sh
 ```
 
-The installer will:
-1. Build the Rust CLI and Swift notification helper
-2. Install to `~/.ahoy/`
-3. Prompt you to install Claude Code hooks
+Add to PATH:
 
-**Add to PATH:**
 ```bash
 export PATH="$HOME/.ahoy/bin:$PATH"
 ```
 
-## Usage
+## Claude Code Setup
 
-### Send notifications manually
-
-```bash
-ahoy send "Task completed"                      # Simple notification
-ahoy send -t "Custom Title" "Message here"      # Custom title
-ahoy send --activate com.apple.Terminal "Done"  # Focus Terminal when clicked
-```
-
-### Claude Code integration
-
-There are two ways to set up Claude Code notifications:
-
-#### Option 1: Claude Code plugin (recommended)
-
-First, install the ahoy binary:
+### Plugin (recommended)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | bash
 ```
 
-Then inside Claude Code, register the marketplace and install the hooks plugin:
+Then inside Claude Code:
 
 ```
 /plugin marketplace add raiderrobert/ahoy
 /plugin install ahoy-hooks@ahoy
 ```
 
-This installs hooks that trigger notifications when:
-- **Stop**: Claude finishes a task (shows the last user prompt)
-- **Idle prompt**: Claude is waiting for your input
-- **Permission prompt**: Claude needs permission to proceed
-
-To remove, uninstall the plugin from Claude Code.
-
-#### Option 2: CLI install
-
-If you prefer managing hooks manually via the CLI:
+### Manual hooks
 
 ```bash
-ahoy install claude
+ahoy install claude       # writes hooks to ~/.claude/settings.json
+ahoy uninstall claude     # removes them
 ```
 
-This writes hooks directly to `~/.claude/settings.json`. To remove:
+## Usage
 
 ```bash
-ahoy uninstall claude
+ahoy send "Task completed"                      # Simple notification
+ahoy send -t "Custom Title" "Message here"      # Custom title
+ahoy send --activate com.apple.Terminal "Done"   # Focus Terminal when clicked
 ```
-
-Clicking a notification will bring your terminal to the front.
-
-## How it works
-
-1. `ahoy send` calls the Swift notification helper directly (no daemon)
-2. Hooks in `~/.claude/settings.json` run `ahoy send` at key moments
-3. The `--from-claude` flag extracts your last prompt from stdin
-4. The `--activate` flag focuses your terminal when you click the notification
-5. macOS shows a native notification with sound
-
-## Requirements
-
-- macOS (Linux/Windows support planned)
-- Rust toolchain (auto-installed by install script)
-- Swift / Xcode Command Line Tools: `xcode-select --install`
 
 ## Commands
 
-```bash
-ahoy send [OPTIONS] [MESSAGE]    # Send a notification
-ahoy install claude              # Install Claude Code hooks
-ahoy uninstall claude            # Remove Claude Code hooks
-ahoy --help                      # Show all options
+```
+ahoy send [OPTIONS] [MESSAGE]    Send a notification
+ahoy install claude              Install Claude Code hooks
+ahoy uninstall claude            Remove Claude Code hooks
+ahoy --help                      Show all options
 ```
 
-## Advanced Options
+## Requirements
 
-```bash
-# Read Claude Code hook data from stdin to extract last prompt
-ahoy send --from-claude -t "Title" --activate "$__CFBundleIdentifier"
-
-# Send custom JSON payload
-ahoy send --json '{"title":"Custom","body":"Message","activate":"com.app.id"}'
-```
+- macOS
+- Xcode Command Line Tools: `xcode-select --install`
 
 ## Uninstall
 
@@ -125,5 +83,3 @@ Or manually:
 ahoy uninstall claude  # Remove hooks first
 rm -rf ~/.ahoy
 ```
-
-Don't forget to remove the PATH export from your shell config.
