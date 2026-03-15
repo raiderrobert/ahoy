@@ -75,7 +75,7 @@ fn main() -> anyhow::Result<()> {
             if status {
                 install::status::run()?;
             } else {
-                install::install::run(agent)?;
+                install::run::run(agent)?;
             }
         }
         Commands::Uninstall { agent } => {

@@ -1,4 +1,4 @@
 pub mod claude;
-pub mod install;
+pub mod run;
 pub mod status;
 pub mod uninstall;
