@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/raiderrobert/ahoy/compare/v0.1.2...v0.1.3) (2026-03-15)
+
+
+### Bug Fixes
+
+* use workflow_dispatch trigger in release workflow ([#5](https://github.com/raiderrobert/ahoy/issues/5)) ([19afa53](https://github.com/raiderrobert/ahoy/commit/19afa5385be5fc5b154b9e503a42eee9cd07b353))
+
 ## [0.1.2](https://github.com/raiderrobert/ahoy/compare/v0.1.1...v0.1.2) (2026-03-15)
 
 
