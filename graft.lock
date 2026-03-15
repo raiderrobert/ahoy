@@ -1,0 +1,11 @@
+[grafts.release-please]
+source = "gh:raiderrobert/graft/.github/workflows/release-please.yml"
+version = "v0.1.1"
+commit = "dde2306688081ecd232f07f793e284d7c288d796"
+checksum = "sha256:8a3c4c4bd73737fb958aad138d78efbbf7639e1884816bb762dacff216d5c2b8"
+
+[grafts.pr-title]
+source = "gh:raiderrobert/graft/.github/workflows/pr-title.yml"
+version = "v0.1.1"
+commit = "dde2306688081ecd232f07f793e284d7c288d796"
+checksum = "sha256:fff7c73efda8b9ebd50701149d0a6fb0142ad2b48580235ee3ae8ae5936cfbf3"

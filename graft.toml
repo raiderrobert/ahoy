@@ -1,0 +1,9 @@
+[grafts.release-please]
+source = "gh:raiderrobert/graft/.github/workflows/release-please.yml"
+version = "v0.1.1"
+dest = ".github/workflows/release-please.yml"
+
+[grafts.pr-title]
+source = "gh:raiderrobert/graft/.github/workflows/pr-title.yml"
+version = "v0.1.1"
+dest = ".github/workflows/pr-title.yml"
