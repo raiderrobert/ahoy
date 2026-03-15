@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.2](https://github.com/raiderrobert/ahoy/compare/v0.1.1...v0.1.2) (2026-03-15)
+
+
+### Bug Fixes
+
+* rename install/install.rs to install/run.rs to fix module inception lint ([3a37ac7](https://github.com/raiderrobert/ahoy/commit/3a37ac752eb3582cde7c571e7679133852412f1a))
+
+
+### Miscellaneous
+
+* added in justfile ([a85073b](https://github.com/raiderrobert/ahoy/commit/a85073b43861f2e15bff6f00afc259d61b8ce2eb))
+
 ## [0.1.1](https://github.com/raiderrobert/ahoy/compare/v0.1.0...v0.1.1) (2026-03-15)
 
 
