@@ -1,110 +1,113 @@
-#!/bin/bash
+#!/bin/sh
+# Ahoy installer — https://github.com/raiderrobert/ahoy
+# Usage: curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | sh
 set -e
 
-# Ahoy installer - builds from source
-# Usage: curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | bash
-
-AHOY_HOME="$HOME/.ahoy"
+REPO="raiderrobert/ahoy"
+AHOY_HOME="${AHOY_HOME:-$HOME/.ahoy}"
 AHOY_BIN="$AHOY_HOME/bin"
 AHOY_APP="$AHOY_HOME/Ahoy.app"
-REPO_URL="https://github.com/raiderrobert/ahoy.git"
 
-echo "Installing Ahoy - notification CLI for LLM coding agents"
-echo ""
+main() {
+    platform="$(detect_platform)"
+    arch="$(detect_arch)"
+    asset="$(asset_name "$platform" "$arch")"
 
-# Check for required tools
-check_rust() {
-    if command -v cargo &> /dev/null; then
-        echo "✓ Rust is installed"
-        return 0
-    else
-        echo "Rust not found. Installing via rustup..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source "$HOME/.cargo/env"
-        echo "✓ Rust installed"
-    fi
-}
-
-check_swift() {
-    if command -v swiftc &> /dev/null; then
-        echo "✓ Swift is installed"
-        return 0
-    else
-        echo "Error: Swift compiler (swiftc) not found."
-        echo "Please install Xcode Command Line Tools: xcode-select --install"
+    if [ -z "$asset" ]; then
+        echo "Error: unsupported platform/architecture: ${platform}/${arch}" >&2
+        echo "Pre-built binaries are available for:" >&2
+        echo "  - macOS (Apple Silicon / aarch64)" >&2
+        echo "  - macOS (Intel / x86_64)" >&2
         exit 1
     fi
-}
 
-# Create temp directory for build
-TEMP_DIR=$(mktemp -d)
-trap "rm -rf $TEMP_DIR" EXIT
+    url="https://github.com/${REPO}/releases/latest/download/${asset}"
 
-echo ""
-echo "Checking dependencies..."
-check_rust
-check_swift
+    echo "Installing Ahoy - notification CLI for LLM coding agents"
+    echo ""
+    echo "Detected: ${platform}/${arch}"
+    echo "Downloading: ${url}"
 
-echo ""
-echo "Cloning repository..."
-git clone --depth 1 "$REPO_URL" "$TEMP_DIR/ahoy"
-cd "$TEMP_DIR/ahoy"
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' EXIT
 
-echo ""
-echo "Building Rust binary..."
-cargo build --release
+    if command -v curl > /dev/null 2>&1; then
+        curl -fsSL "$url" -o "${tmpdir}/${asset}"
+    elif command -v wget > /dev/null 2>&1; then
+        wget -qO "${tmpdir}/${asset}" "$url"
+    else
+        echo "Error: curl or wget is required" >&2
+        exit 1
+    fi
 
-echo ""
-echo "Building Swift helper..."
-swiftc -O -o Ahoy.app/Contents/MacOS/ahoy-notify swift/ahoy-notify.swift
+    tar xzf "${tmpdir}/${asset}" -C "$tmpdir"
 
-echo ""
-echo "Installing to $AHOY_HOME..."
+    # Install binary
+    mkdir -p "$AHOY_BIN"
+    cp "${tmpdir}/ahoy/ahoy" "$AHOY_BIN/ahoy"
+    chmod +x "$AHOY_BIN/ahoy"
 
-# Create directory structure
-mkdir -p "$AHOY_BIN"
+    # Install Ahoy.app bundle
+    rm -rf "$AHOY_APP"
+    cp -R "${tmpdir}/ahoy/Ahoy.app" "$AHOY_APP"
 
-# Copy binary
-cp target/release/ahoy "$AHOY_BIN/ahoy"
-
-# Copy Ahoy.app bundle (contains Swift helper, icons, Info.plist)
-rm -rf "$AHOY_APP"
-cp -R Ahoy.app "$AHOY_APP"
-
-# Remove quarantine attributes and code sign (macOS)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "Code signing binaries..."
+    # macOS post-install: remove quarantine, code sign, register with Launch Services
     xattr -cr "$AHOY_BIN/ahoy" 2>/dev/null || true
     xattr -cr "$AHOY_APP" 2>/dev/null || true
     codesign -s - "$AHOY_BIN/ahoy" 2>/dev/null || true
     codesign -s - "$AHOY_APP/Contents/MacOS/ahoy-notify" 2>/dev/null || true
-
-    echo "Registering with macOS Launch Services..."
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$AHOY_APP"
-fi
 
-echo ""
-echo "✓ Ahoy installed successfully!"
-echo ""
-echo "Binary location: $AHOY_BIN/ahoy"
-echo ""
-
-# Check if ahoy is in PATH
-if [[ ":$PATH:" != *":$AHOY_BIN:"* ]]; then
-    echo "To add ahoy to your PATH, add this to your shell config:"
     echo ""
-    echo "  export PATH=\"\$HOME/.ahoy/bin:\$PATH\""
+    echo "Ahoy installed successfully!"
     echo ""
-fi
+    echo "Binary location: $AHOY_BIN/ahoy"
+    echo ""
 
-# Point user to Claude Code plugin for hook installation
-echo "To set up Claude Code notifications, run these inside Claude Code:"
-echo ""
-echo "  /plugin marketplace add raiderrobert/ahoy"
-echo "  /plugin install ahoy-hooks@ahoy"
-echo ""
-echo "Or install hooks manually with: $AHOY_BIN/ahoy install claude"
+    # Check if ahoy is in PATH
+    if ! echo ":$PATH:" | grep -q ":$AHOY_BIN:"; then
+        echo "To add ahoy to your PATH, add this to your shell config:"
+        echo ""
+        echo "  export PATH=\"\$HOME/.ahoy/bin:\$PATH\""
+        echo ""
+    fi
 
-echo ""
-echo "Test it with: $AHOY_BIN/ahoy send 'Hello from Ahoy!'"
-echo ""
+    # Point user to Claude Code plugin for hook installation
+    echo "To set up Claude Code notifications, run these inside Claude Code:"
+    echo ""
+    echo "  /plugin marketplace add raiderrobert/ahoy"
+    echo "  /plugin install ahoy-hooks@ahoy"
+    echo ""
+    echo "Or install hooks manually with: $AHOY_BIN/ahoy install claude"
+    echo ""
+    echo "Test it with: $AHOY_BIN/ahoy send 'Hello from Ahoy!'"
+    echo ""
+}
+
+detect_platform() {
+    case "$(uname -s)" in
+        Darwin*) echo "macos" ;;
+        *)       echo "unknown" ;;
+    esac
+}
+
+detect_arch() {
+    case "$(uname -m)" in
+        x86_64|amd64)  echo "x86_64" ;;
+        arm64|aarch64) echo "aarch64" ;;
+        *)             echo "unknown" ;;
+    esac
+}
+
+asset_name() {
+    platform="$1"
+    arch="$2"
+
+    case "${arch}-${platform}" in
+        aarch64-macos) echo "ahoy-aarch64-macos.tar.gz" ;;
+        x86_64-macos)  echo "ahoy-x86_64-macos.tar.gz" ;;
+        *)             echo "" ;;
+    esac
+}
+
+main
