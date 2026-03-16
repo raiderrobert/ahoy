@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/raiderrobert/ahoy/compare/v0.1.3...v0.1.4) (2026-03-16)
+
+
+### Features
+
+* download pre-built binaries in install script and add x86_64 release build ([#7](https://github.com/raiderrobert/ahoy/issues/7)) ([53d8617](https://github.com/raiderrobert/ahoy/commit/53d86175da7378ed4d11f6aa40e9406b06531f64))
+
 ## [0.1.3](https://github.com/raiderrobert/ahoy/compare/v0.1.2...v0.1.3) (2026-03-15)
 
 
