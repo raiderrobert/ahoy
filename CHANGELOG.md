@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.2.0](https://github.com/raiderrobert/ahoy/compare/v0.1.5...v0.2.0) (2026-03-17)
+
+
+### Features
+
+* remove manual hook install/uninstall CLI commands ([#13](https://github.com/raiderrobert/ahoy/issues/13)) ([99fa3a4](https://github.com/raiderrobert/ahoy/commit/99fa3a474439ce96358c07f47206ff139b6cf2c9))
+
+
+### Bug Fixes
+
+* version marketplace.json via release-please ([#11](https://github.com/raiderrobert/ahoy/issues/11)) ([1da64c2](https://github.com/raiderrobert/ahoy/commit/1da64c2ef324cce33c215936050da9a91685a4fd))
+
+
+### Miscellaneous
+
+* bump next release to 0.2.0 ([ea6081d](https://github.com/raiderrobert/ahoy/commit/ea6081de8d88a8deead276d9444c22ec97ae1e80))
+* switch license from MIT to PolyForm Shield 1.0.0 ([#12](https://github.com/raiderrobert/ahoy/issues/12)) ([e006c51](https://github.com/raiderrobert/ahoy/commit/e006c51d5b8b1c6d3d536d58ae27746501c1ef28))
+
+
+### Code Refactoring
+
+* move icons into swift/ directory ([#15](https://github.com/raiderrobert/ahoy/issues/15)) ([ebd4d60](https://github.com/raiderrobert/ahoy/commit/ebd4d603d581424e4c5827c9540f0903bd5df6a4))
+* remove Linux/Windows notification stubs (macOS-only for now) ([#16](https://github.com/raiderrobert/ahoy/issues/16)) ([fc39353](https://github.com/raiderrobert/ahoy/commit/fc39353593eaa29b68b1b5c3c76e2484f905c0dc))
+
 ## [0.1.5](https://github.com/raiderrobert/ahoy/compare/v0.1.4...v0.1.5) (2026-03-17)
 
 
