@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/raiderrobert/ahoy/compare/v0.2.0...v0.2.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* use subdirectory for plugin source path in marketplace.json ([#18](https://github.com/raiderrobert/ahoy/issues/18)) ([9abbf27](https://github.com/raiderrobert/ahoy/commit/9abbf272cabad58a31b0bdc15cdb57c266dbdd6b))
+
 ## [0.2.0](https://github.com/raiderrobert/ahoy/compare/v0.1.5...v0.2.0) (2026-03-17)
 
 
