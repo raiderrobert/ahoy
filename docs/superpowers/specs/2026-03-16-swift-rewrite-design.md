@@ -31,6 +31,8 @@ The binary must stay alive after delivering the notification:
 - **With `--activate`**: Run an `NSApplication` RunLoop for up to 60 seconds, waiting for the user to click the notification. On click, activate the target app and exit.
 - **Without `--activate`**: Run the RunLoop for 0.5 seconds so macOS has time to display the notification, then exit.
 
+**Known limitation:** Claude Code hooks have a 5-second timeout (`hooks.json`). When `--activate` is set, the 60-second click window will be cut short by the hook timeout. This is an existing limitation, not introduced by this rewrite. The notification still displays; only the click-to-activate callback is lost.
+
 This lifecycle is inherited from the existing Swift code and must be preserved. `NSApplication.shared` is initialized with `.accessory` activation policy (no dock icon, no menu bar).
 
 ### Focus Check
@@ -49,7 +51,7 @@ Arguments:
 
 Options:
   -t, --title <text>   Notification title (default: "Ahoy")
-  --json <json>        Raw JSON: {"title":"...","body":"...","activate":"..."}
+  --json <json>        Raw JSON: {"title":"...","body":"..."} (optional: activate, sound)
   --from-claude        Read Claude Code hook data from stdin
   --activate <id>      Bundle ID to activate on click
   --sound <name>       Notification sound (default: "Glass")
@@ -70,7 +72,9 @@ Single file organized with `// MARK:` sections:
 ```
 // MARK: - Data Types
 struct Notification (title, body, activate, sound)
-struct ClaudeHookData (transcript_path, cwd, tool_name, tool_input, session_id, hook_event_name)
+struct ClaudeHookData (transcript_path?, cwd?, tool_name?, tool_input?)
+struct TranscriptLine (type?, message: TranscriptMessage?)
+struct TranscriptMessage (content?)
 
 // MARK: - CLI Parsing
 parseArgs() → (message?, title, json?, fromClaude, activate?, sound)
@@ -86,20 +90,21 @@ NotificationDelegate class (existing code, unchanged)
 showNotification(Notification) → delivers via NSUserNotificationCenter
 
 // MARK: - Main
+Precedence: --from-claude > --json > positional message (mutually exclusive)
 Parse args → build Notification → focus check → show
 ```
 
 ### Bug Fixes Included
 
 - **UTF-8 safe truncation**: Uses `String.prefix()` instead of byte slicing (the Rust code panics on multi-byte characters at truncation boundaries)
-- **Trailing slash in cwd**: Trims trailing slashes before extracting project name (currently produces `[]` instead of `[projectname]`)
+- **Trailing slash in cwd**: Trim trailing `/` before splitting to extract project name (the current Rust `split('/').next_back()` returns `""` for paths ending in `/`, producing `[]`)
 - **Error log level**: Notification failures go to stderr as errors (Rust code logged them at info level)
 
 ### JSON Parsing
 
 Uses Foundation's `Codable` protocol — built in, zero dependencies. `ClaudeHookData` and the transcript line format are decoded with `JSONDecoder`.
 
-**Important:** Swift's `JSONDecoder` rejects unknown keys by default (unlike Rust's serde). All `Codable` structs must either list every possible field from the JSON as optional properties, or use `CodingKeys` with a custom `init(from:)` that ignores unknown keys. The safest approach: make all fields optional and list the full set.
+Swift's `JSONDecoder` silently ignores unknown keys by default (same as Rust's serde). Only the fields needed by the program must be declared as optional properties. Fields present in the JSON but absent from the struct are discarded.
 
 ### Intentionally Dropped Fields
 
@@ -176,4 +181,3 @@ All hooks drop `send` from the command string. The existing `hooks.json` structu
 - **Stop**: `$HOME/.ahoy/bin/ahoy --from-claude -t 'Claude Code' --activate "$__CFBundleIdentifier"`
 - **Notification (idle_prompt)**: `$HOME/.ahoy/bin/ahoy -t 'Claude Code' 'Waiting for your input' --activate "$__CFBundleIdentifier"`
 - **Notification (permission_prompt)**: `$HOME/.ahoy/bin/ahoy --from-claude -t 'Claude Code' --activate "$__CFBundleIdentifier"`
-```
