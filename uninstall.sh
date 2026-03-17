@@ -10,12 +10,6 @@ AHOY_BIN="$AHOY_HOME/bin/ahoy"
 echo "Uninstalling Ahoy..."
 echo ""
 
-# Remove Claude Code hooks if installed
-if [ -f "$AHOY_BIN" ]; then
-    echo "Removing Claude Code hooks..."
-    "$AHOY_BIN" uninstall claude 2>/dev/null || true
-fi
-
 # Unregister from macOS Launch Services
 if [[ "$OSTYPE" == "darwin"* ]] && [ -d "$AHOY_HOME/Ahoy.app" ]; then
     echo "Unregistering from macOS Launch Services..."

@@ -29,10 +29,8 @@ export PATH="$HOME/.ahoy/bin:$PATH"
 
 ## Claude Code Setup
 
-### Plugin (recommended)
-
 ```bash
-curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | sh
 ```
 
 Then inside Claude Code:
@@ -40,13 +38,6 @@ Then inside Claude Code:
 ```
 /plugin marketplace add raiderrobert/ahoy
 /plugin install ahoy-hooks@ahoy
-```
-
-### Manual hooks
-
-```bash
-ahoy install claude       # writes hooks to ~/.claude/settings.json
-ahoy uninstall claude     # removes them
 ```
 
 ## Usage
@@ -61,8 +52,6 @@ ahoy send --activate com.apple.Terminal "Done"   # Focus Terminal when clicked
 
 ```
 ahoy send [OPTIONS] [MESSAGE]    Send a notification
-ahoy install claude              Install Claude Code hooks
-ahoy uninstall claude            Remove Claude Code hooks
 ahoy --help                      Show all options
 ```
 
@@ -77,9 +66,4 @@ ahoy --help                      Show all options
 curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/uninstall.sh | bash
 ```
 
-Or manually:
-
-```bash
-ahoy uninstall claude  # Remove hooks first
-rm -rf ~/.ahoy
-```
+Or manually: `rm -rf ~/.ahoy`
