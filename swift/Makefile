@@ -25,8 +25,8 @@ build:
 	mkdir -p $(APP_BUNDLE_PATH)/Contents/Resources
 	cp $(SWIFT_BIN) $(APP_BUNDLE_PATH)/Contents/MacOS/
 	cp $(INFO_PLIST) $(APP_BUNDLE_PATH)/Contents/Info.plist
-	cp -n ../resources/icons/ahoy-icon-512.png $(APP_BUNDLE_PATH)/Contents/Resources/ 2>/dev/null || true
-	cp -n ../resources/icons/ahoy-icon-128.png $(APP_BUNDLE_PATH)/Contents/Resources/ 2>/dev/null || true
+	cp -n icons/ahoy-icon-512.png $(APP_BUNDLE_PATH)/Contents/Resources/ 2>/dev/null || true
+	cp -n icons/ahoy-icon-128.png $(APP_BUNDLE_PATH)/Contents/Resources/ 2>/dev/null || true
 	@echo "Build complete."
 
 # Code sign the app bundle
