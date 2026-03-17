@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Git tag to build and release (e.g. v0.1.2)"
+        description: "Git tag to build and release (e.g. v0.3.0)"
         required: true
         type: string
 
@@ -19,22 +19,12 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build Rust binary
-        run: cargo build --release
-
-      - name: Build Swift helper
+      - name: Build Swift binary
         run: make -C swift build sign
-
-      - name: Code sign Rust binary
-        run: codesign -s - target/release/ahoy
 
       - name: Create release archive
         run: |
           mkdir -p release/ahoy
-          cp target/release/ahoy release/ahoy/
           cp -R Ahoy.app release/ahoy/
           cp install.sh release/ahoy/
           cp uninstall.sh release/ahoy/
