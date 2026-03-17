@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/raiderrobert/ahoy/compare/v0.2.1...v0.2.2) (2026-03-17)
+
+
+### Bug Fixes
+
+* move plugin.json and hooks to repo root for marketplace discovery ([#20](https://github.com/raiderrobert/ahoy/issues/20)) ([082a30b](https://github.com/raiderrobert/ahoy/commit/082a30b933a005f17802d9462b61d5006d11216d))
+
 ## [0.2.1](https://github.com/raiderrobert/ahoy/compare/v0.2.0...v0.2.1) (2026-03-17)
 
 
