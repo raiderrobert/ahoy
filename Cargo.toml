@@ -3,7 +3,7 @@ name = "ahoy"
 version = "0.1.5"
 edition = "2024"
 description = "Desktop notifications for LLM coding agents"
-license = "MIT"
+license-file = "LICENSE"
 repository = "https://github.com/raiderrobert/ahoy"
 
 [dependencies]
