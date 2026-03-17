@@ -2,24 +2,19 @@
 default:
     @just --list
 
-# Run all checks (fmt, clippy, test)
+# Run all checks (build + test)
 check:
-    cargo fmt --check
-    cargo clippy -- -D warnings
-    cargo test
+    make -C swift build sign
+    make -C swift test
 
 # Run tests
-test *args:
-    cargo test {{args}}
+test:
+    make -C swift test
 
 # Build release binary
 build:
-    cargo build --release
+    make -C swift build sign
 
-# Run formatting
-fmt:
-    cargo fmt
-
-# Install graft locally
+# Install locally
 install:
-    cargo install --path .
+    make -C swift install

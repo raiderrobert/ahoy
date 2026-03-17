@@ -1,21 +1,20 @@
-# Ahoy Native macOS Notification Helper
-# Build pipeline for Swift-based notification system
+# Ahoy — native macOS notification CLI
+# Single Swift binary, no package manager
 
-SWIFT_SRC = ahoy-notify.swift
-SWIFT_BIN = ahoy-notify
+SWIFT_SRC = ahoy.swift
+SWIFT_BIN = ahoy
 INFO_PLIST = Info.plist
 APP_BUNDLE = Ahoy.app
 APP_BUNDLE_PATH = ../$(APP_BUNDLE)
 
-# Installation paths
 INSTALL_DIR = $(HOME)/.ahoy
 INSTALL_APP = $(INSTALL_DIR)/$(APP_BUNDLE)
+INSTALL_BIN = $(INSTALL_DIR)/bin/$(SWIFT_BIN)
 
 .PHONY: all clean build sign install uninstall test
 
 all: build sign
 
-# Compile Swift binary with embedded Info.plist
 build:
 	@echo "Building $(SWIFT_BIN)..."
 	swiftc -O -target arm64-apple-macos13.0 -o $(SWIFT_BIN) $(SWIFT_SRC) \
@@ -29,7 +28,6 @@ build:
 	cp -n icons/ahoy-icon-128.png $(APP_BUNDLE_PATH)/Contents/Resources/ 2>/dev/null || true
 	@echo "Build complete."
 
-# Code sign the app bundle
 sign:
 	@echo "Signing app bundle..."
 	codesign --force --deep --sign - $(APP_BUNDLE_PATH)
@@ -37,27 +35,26 @@ sign:
 	/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f $(APP_BUNDLE_PATH)
 	@echo "Signing complete."
 
-# Install to ~/.ahoy/
 install: all
 	@echo "Installing to $(INSTALL_DIR)..."
-	mkdir -p $(INSTALL_DIR)
+	mkdir -p $(INSTALL_DIR)/bin
 	rm -rf $(INSTALL_APP)
 	cp -R $(APP_BUNDLE_PATH) $(INSTALL_APP)
+	ln -sf $(INSTALL_APP)/Contents/MacOS/$(SWIFT_BIN) $(INSTALL_BIN)
 	/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f $(INSTALL_APP)
 	@echo "Installed to $(INSTALL_APP)"
+	@echo "Symlinked $(INSTALL_BIN) → $(INSTALL_APP)/Contents/MacOS/$(SWIFT_BIN)"
 
-# Remove installation
 uninstall:
 	@echo "Removing $(INSTALL_APP)..."
 	rm -rf $(INSTALL_APP)
+	rm -f $(INSTALL_BIN)
 	@echo "Uninstalled."
 
-# Test notification
-test:
-	@echo "Sending test notification..."
-	$(APP_BUNDLE_PATH)/Contents/MacOS/$(SWIFT_BIN) "Ahoy Test" "Makefile test successful"
+test: build
+	@echo "Running integration tests..."
+	bash ../tests/integration.sh $(APP_BUNDLE_PATH)/Contents/MacOS/$(SWIFT_BIN)
 
-# Clean build artifacts
 clean:
 	rm -f $(SWIFT_BIN)
 	rm -rf $(APP_BUNDLE_PATH)/Contents/MacOS/$(SWIFT_BIN)
