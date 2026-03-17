@@ -1,9 +1,9 @@
-use ahoy::{client, install};
+use ahoy::client;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "ahoy")]
-#[command(about = "Cross-platform notification CLI for LLM coding agents")]
+#[command(about = "Native macOS notifications for LLM coding agents")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -33,22 +33,6 @@ enum Commands {
         #[arg(long)]
         activate: Option<String>,
     },
-
-    /// Install hooks for LLM CLI agents
-    Install {
-        /// Agent to install hook for (claude, codex, gemini)
-        agent: Option<String>,
-
-        /// Show installation status
-        #[arg(long)]
-        status: bool,
-    },
-
-    /// Remove hooks from LLM CLI agents
-    Uninstall {
-        /// Agent to uninstall hook from (claude, codex, gemini, or all)
-        agent: Option<String>,
-    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -70,16 +54,6 @@ fn main() -> anyhow::Result<()> {
             activate,
         } => {
             client::send::run(message, title, json, from_claude, activate)?;
-        }
-        Commands::Install { agent, status } => {
-            if status {
-                install::status::run()?;
-            } else {
-                install::run::run(agent)?;
-            }
-        }
-        Commands::Uninstall { agent } => {
-            install::uninstall::run(agent)?;
         }
     }
 
