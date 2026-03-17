@@ -36,6 +36,14 @@ jobs:
       - name: Build
         run: cargo build --release
 
+  swift:
+    strategy:
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Build Swift helper
         run: make -C swift build sign
 
