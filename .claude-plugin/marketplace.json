@@ -10,7 +10,7 @@
     {
       "name": "ahoy-hooks",
       "description": "Desktop notification hooks for Claude Code via Ahoy",
-      "source": "./ahoy-hooks",
+      "source": "./",
       "category": "productivity"
     }
   ]
