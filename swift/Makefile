@@ -18,7 +18,7 @@ all: build sign
 # Compile Swift binary with embedded Info.plist
 build:
 	@echo "Building $(SWIFT_BIN)..."
-	swiftc -O -o $(SWIFT_BIN) $(SWIFT_SRC) \
+	swiftc -O -target arm64-apple-macos13.0 -o $(SWIFT_BIN) $(SWIFT_SRC) \
 		-Xlinker -sectcreate -Xlinker __TEXT -Xlinker __info_plist -Xlinker $(INFO_PLIST)
 	@echo "Copying to app bundle..."
 	mkdir -p $(APP_BUNDLE_PATH)/Contents/MacOS
