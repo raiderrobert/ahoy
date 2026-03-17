@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/raiderrobert/ahoy/compare/v0.1.4...v0.1.5) (2026-03-17)
+
+
+### Bug Fixes
+
+* drop x86_64 from release build (macos-13 runners retired) ([#9](https://github.com/raiderrobert/ahoy/issues/9)) ([c150139](https://github.com/raiderrobert/ahoy/commit/c150139958c63ea9dd8a80ed106fcf449de10e17))
+
 ## [0.1.4](https://github.com/raiderrobert/ahoy/compare/v0.1.3...v0.1.4) (2026-03-16)
 
 
