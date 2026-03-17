@@ -29,11 +29,7 @@ export PATH="$HOME/.ahoy/bin:$PATH"
 
 ## Claude Code Setup
 
-```bash
-curl -sSL https://raw.githubusercontent.com/raiderrobert/ahoy/main/install.sh | sh
-```
-
-Then inside Claude Code:
+Inside Claude Code:
 
 ```
 /plugin marketplace add raiderrobert/ahoy
