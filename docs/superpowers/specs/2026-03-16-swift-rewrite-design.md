@@ -23,7 +23,19 @@ The binary lives at `Ahoy.app/Contents/MacOS/ahoy`. At install time, `~/.ahoy/bi
 
 ### Notification API
 
-Uses `NSUserNotificationCenter` (deprecated but functional). No migration to `UNUserNotificationCenter` — that requires permission prompts and more app ceremony. If Apple removes the deprecated API in a future macOS release, migrating is a scoped change in one file.
+Uses `NSUserNotificationCenter` (deprecated since macOS 10.14, still functional through macOS 15). Deployment target is macOS 13.0. No migration to `UNUserNotificationCenter` — that requires permission prompts and more app ceremony. If Apple removes the deprecated API in a future macOS release, migrating is a scoped change in one file.
+
+### Notification Lifecycle
+
+The binary must stay alive after delivering the notification:
+- **With `--activate`**: Run an `NSApplication` RunLoop for up to 60 seconds, waiting for the user to click the notification. On click, activate the target app and exit.
+- **Without `--activate`**: Run the RunLoop for 0.5 seconds so macOS has time to display the notification, then exit.
+
+This lifecycle is inherited from the existing Swift code and must be preserved. `NSApplication.shared` is initialized with `.accessory` activation policy (no dock icon, no menu bar).
+
+### Focus Check
+
+Before showing a notification, if `--activate` is set, check whether the target app is already the frontmost application. If so, skip the notification silently (the user is already looking at it). Exit 0.
 
 ## CLI Interface
 
@@ -48,6 +60,8 @@ Changes from current Rust CLI:
 - `send` subcommand removed (was the only subcommand)
 - `--sound` exposed as a flag (was hardcoded)
 - `--help` is hand-rolled (usage print + exit)
+- `--version` dropped (no longer have Cargo.toml to source it; not worth the complexity)
+- `--icon` dropped (unused; icon is handled by bundle swizzling)
 
 ## Internal Structure
 
@@ -56,7 +70,7 @@ Single file organized with `// MARK:` sections:
 ```
 // MARK: - Data Types
 struct Notification (title, body, activate, sound)
-struct ClaudeHookData (transcript_path, cwd, tool_name, tool_input)
+struct ClaudeHookData (transcript_path, cwd, tool_name, tool_input, session_id, hook_event_name)
 
 // MARK: - CLI Parsing
 parseArgs() → (message?, title, json?, fromClaude, activate?, sound)
@@ -85,6 +99,26 @@ Parse args → build Notification → focus check → show
 
 Uses Foundation's `Codable` protocol — built in, zero dependencies. `ClaudeHookData` and the transcript line format are decoded with `JSONDecoder`.
 
+**Important:** Swift's `JSONDecoder` rejects unknown keys by default (unlike Rust's serde). All `Codable` structs must either list every possible field from the JSON as optional properties, or use `CodingKeys` with a custom `init(from:)` that ignores unknown keys. The safest approach: make all fields optional and list the full set.
+
+### Intentionally Dropped Fields
+
+The Rust `Notification` struct had `icon` and `metadata` fields. These are **dropped** in the rewrite:
+- `icon` was never passed to the Swift binary — dead plumbing
+- `metadata` (`HashMap<String, Value>`) was never consumed anywhere
+
+The `--icon` flag from the current `ahoy-notify` binary is also dropped — the app icon is handled entirely by bundle swizzling, and the `--icon` flag was unused in practice.
+
+The `--json` mode accepts `{"title":"...","body":"..."}` where `title` and `body` are required. Optional fields: `activate`, `sound`. Unknown fields are ignored.
+
+### Empty vs Invalid Stdin
+
+When `--from-claude` is set:
+- **Empty stdin** (zero bytes): return a fallback notification with body "Task finished". Exit 0.
+- **Non-empty but invalid JSON**: print error to stderr. Exit non-zero.
+
+This matches the current Rust behavior. The check is on byte length, not whitespace.
+
 ## Files Changed
 
 ### Deleted
@@ -108,7 +142,7 @@ Uses Foundation's `Codable` protocol — built in, zero dependencies. `ClaudeHoo
 - `.github/workflows/ci.yml` — remove Rust steps, Swift build + integration tests only
 - `.github/workflows/release.yml` — remove Rust build, archive is `Ahoy.app` + scripts
 - `justfile` — recipes become Swift-oriented
-- `release-please-config.json` — release type from `rust` to `simple`
+- `release-please-config.json` — release type from `rust` to `simple`; preserve extra-files config for `marketplace.json` and `plugin.json` version patching
 
 ### New
 
@@ -137,12 +171,9 @@ Shell-based integration tests that exercise the real binary. Run via `make test`
 
 ## Hook Commands
 
-All hooks drop `send`:
+All hooks drop `send` from the command string. The existing `hooks.json` structure (nested hooks array, matchers, timeouts) is preserved — only the `command` values change:
 
-```json
-{
-  "Stop": "$HOME/.ahoy/bin/ahoy --from-claude -t 'Claude Code' --activate \"$__CFBundleIdentifier\"",
-  "Notification (idle)": "$HOME/.ahoy/bin/ahoy -t 'Claude Code' 'Waiting for your input' --activate \"$__CFBundleIdentifier\"",
-  "Notification (permission)": "$HOME/.ahoy/bin/ahoy --from-claude -t 'Claude Code' --activate \"$__CFBundleIdentifier\""
-}
+- **Stop**: `$HOME/.ahoy/bin/ahoy --from-claude -t 'Claude Code' --activate "$__CFBundleIdentifier"`
+- **Notification (idle_prompt)**: `$HOME/.ahoy/bin/ahoy -t 'Claude Code' 'Waiting for your input' --activate "$__CFBundleIdentifier"`
+- **Notification (permission_prompt)**: `$HOME/.ahoy/bin/ahoy --from-claude -t 'Claude Code' --activate "$__CFBundleIdentifier"`
 ```
