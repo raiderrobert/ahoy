@@ -17,7 +17,6 @@ main() {
         echo "Error: unsupported platform/architecture: ${platform}/${arch}" >&2
         echo "Pre-built binaries are available for:" >&2
         echo "  - macOS (Apple Silicon / aarch64)" >&2
-        echo "  - macOS (Intel / x86_64)" >&2
         exit 1
     fi
 
@@ -105,7 +104,6 @@ asset_name() {
 
     case "${arch}-${platform}" in
         aarch64-macos) echo "ahoy-aarch64-macos.tar.gz" ;;
-        x86_64-macos)  echo "ahoy-x86_64-macos.tar.gz" ;;
         *)             echo "" ;;
     esac
 }
