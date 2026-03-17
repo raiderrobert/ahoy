@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/raiderrobert/ahoy/compare/v0.2.2...v0.2.3) (2026-03-17)
+
+
+### Bug Fixes
+
+* set macOS 13.0 deployment target for Swift binary ([#22](https://github.com/raiderrobert/ahoy/issues/22)) ([a5afe3e](https://github.com/raiderrobert/ahoy/commit/a5afe3ebf7703997ccdac5b0679fd460118931ce))
+
 ## [0.2.2](https://github.com/raiderrobert/ahoy/compare/v0.2.1...v0.2.2) (2026-03-17)
 
 
