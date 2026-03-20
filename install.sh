@@ -41,20 +41,17 @@ main() {
 
     tar xzf "${tmpdir}/${asset}" -C "$tmpdir"
 
-    # Install binary
-    mkdir -p "$AHOY_BIN"
-    cp "${tmpdir}/ahoy/ahoy" "$AHOY_BIN/ahoy"
-    chmod +x "$AHOY_BIN/ahoy"
-
     # Install Ahoy.app bundle
     rm -rf "$AHOY_APP"
     cp -R "${tmpdir}/ahoy/Ahoy.app" "$AHOY_APP"
 
-    # macOS post-install: remove quarantine, code sign, register with Launch Services
-    xattr -cr "$AHOY_BIN/ahoy" 2>/dev/null || true
+    # Symlink the binary from inside the app bundle
+    mkdir -p "$AHOY_BIN"
+    ln -sf "$AHOY_APP/Contents/MacOS/ahoy" "$AHOY_BIN/ahoy"
+
+    # macOS post-install: remove quarantine, code sign, register
     xattr -cr "$AHOY_APP" 2>/dev/null || true
-    codesign -s - "$AHOY_BIN/ahoy" 2>/dev/null || true
-    codesign -s - "$AHOY_APP/Contents/MacOS/ahoy-notify" 2>/dev/null || true
+    codesign -s - "$AHOY_APP/Contents/MacOS/ahoy" 2>/dev/null || true
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$AHOY_APP"
 
     echo ""
@@ -71,15 +68,12 @@ main() {
         echo ""
     fi
 
-    # Point user to Claude Code plugin for hook installation
     echo "To set up Claude Code notifications, run these inside Claude Code:"
     echo ""
     echo "  /plugin marketplace add raiderrobert/ahoy"
     echo "  /plugin install ahoy-hooks@ahoy"
     echo ""
-    echo "Or install hooks manually with: $AHOY_BIN/ahoy install claude"
-    echo ""
-    echo "Test it with: $AHOY_BIN/ahoy send 'Hello from Ahoy!'"
+    echo "Test it with: $AHOY_BIN/ahoy 'Hello from Ahoy!'"
     echo ""
 }
 

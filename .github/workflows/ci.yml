@@ -6,37 +6,8 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
-  test:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-
-      - name: Run tests
-        run: cargo test --verbose
-
-      - name: Build
-        run: cargo build --release
-
-  swift:
+  build-and-test:
     strategy:
       matrix:
         os: [macos-14, macos-15]
@@ -44,22 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Swift helper
+      - name: Build
         run: make -C swift build sign
 
-  lint:
-    runs-on: macos-latest
-    continue-on-error: true  # Non-blocking until codebase is cleaned up
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Check formatting
-        run: cargo fmt --check
-
-      - name: Run clippy
-        run: cargo clippy --all-targets
+      - name: Run integration tests
+        run: make -C swift test
