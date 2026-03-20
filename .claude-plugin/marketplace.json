@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "ahoy",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Desktop notifications for Claude Code",
   "owner": {
     "name": "Robert Roskam"

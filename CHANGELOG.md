@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/raiderrobert/ahoy/compare/v0.2.3...v0.2.4) (2026-03-20)
+
+
+### Features
+
+* rewrite CLI from Rust to single Swift binary ([#25](https://github.com/raiderrobert/ahoy/issues/25)) ([5bf1a71](https://github.com/raiderrobert/ahoy/commit/5bf1a71a640f8db88e20274f3b257e6a264eb81f))
+
 ## [0.2.3](https://github.com/raiderrobert/ahoy/compare/v0.2.2...v0.2.3) (2026-03-17)
 
 
