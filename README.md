@@ -2,10 +2,9 @@
 
 Native macOS notifications for AI coding agents.
 
-- **Walk away from long tasks.** Get pinged when your agent finishes, gets stuck, or needs permission.
-- **Signal, not noise.** Three events, nothing else — done, waiting for input, waiting for permission.
-- **Click to refocus.** Tap the notification and your terminal comes to the front.
-- **No daemon, no polling.** Hooks call a CLI binary on demand. Zero background overhead.
+- No need to sit and babysit. Get pinged when your agent finishes, gets stuck, or needs permission.
+- Simple UX. Just 3 kind of notifications: done, waiting for input, waiting for permission. Click the notification to refocus. Your terminal comes to the front.
+- Simple design. There's no background daemon or process. It simply pushes events via your agent's hooks to the notification center in macOS.
 
 ## Install
 
